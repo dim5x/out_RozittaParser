@@ -191,3 +191,134 @@ class AuthService:
         finally:
             if client:
                 await client.disconnect()
+
+    # ──────────────────────────────────────────────────────────────────────
+    # tdata импорт (по мотивам TDL app/login/desktop.go)
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def detect_tdata_path() -> Optional[str]:
+        """
+        Автоматически находит папку tdata Telegram Desktop.
+
+        Порядок поиска идентичен TDL (pkg/tpath/tpath_*.go):
+            Windows : %APPDATA%/Telegram Desktop/tdata
+            macOS   : ~/Library/Application Support/Telegram Desktop/tdata
+            Linux   : ~/.local/share/TelegramDesktop/tdata
+                      ~/.TelegramDesktop/tdata (старый путь)
+
+        Returns:
+            Абсолютный путь к папке tdata или None если не найдено.
+        """
+        import platform
+        home = os.path.expanduser("~")
+
+        candidates: list[str] = []
+
+        system = platform.system()
+        if system == "Windows":
+            appdata = os.environ.get("APPDATA", "")
+            if appdata:
+                candidates += [
+                    os.path.join(appdata, "Telegram Desktop", "tdata"),
+                    os.path.join(appdata, "Telegram Desktop UWP", "tdata"),
+                ]
+        elif system == "Darwin":
+            candidates += [
+                os.path.join(home, "Library", "Application Support",
+                             "Telegram Desktop", "tdata"),
+            ]
+        else:  # Linux
+            local_share = os.path.join(home, ".local", "share")
+            candidates += [
+                os.path.join(home, ".TelegramDesktop", "tdata"),      # старый
+                os.path.join(local_share, "TelegramDesktop", "tdata"),
+                os.path.join(local_share, "Telegram Desktop", "tdata"),
+                os.path.join(local_share, "KotatogramDesktop", "tdata"),
+                os.path.join(local_share, "64Gram", "tdata"),
+            ]
+
+        for path in candidates:
+            if os.path.isdir(path):
+                logger.debug("auth: tdata found at %s", path)
+                return path
+
+        logger.debug("auth: tdata not found in %d candidates", len(candidates))
+        return None
+
+    @staticmethod
+    async def import_from_tdata(
+        tdata_path: str,
+        session_out: str,
+        log: _LogCallback = logger.info,
+        passcode: str = "",
+    ) -> Optional[User]:
+        """
+        Импортирует сессию Telegram Desktop без ввода кода или пароля.
+
+        Читает папку tdata через библиотеку opentele и создаёт файл .session
+        совместимый с Telethon. Аналог TDL `tdl login -n <ns> desktop`.
+
+        Args:
+            tdata_path:  Путь к папке tdata (например C:/Users/.../tdata).
+            session_out: Путь к выходному .session файлу (без расширения).
+            log:         Колбэк для прогресс-логов.
+            passcode:    Пароль шифрования tdata (обычно пустой).
+
+        Returns:
+            User если импорт успешен, None при ошибке.
+
+        Raises:
+            AuthError: opentele не установлен или tdata повреждена.
+        """
+        log("🖥️ Читаю данные Telegram Desktop...")
+
+        try:
+            from opentele.td import TDesktop          # type: ignore
+            from opentele.api import UseCurrentSession  # type: ignore
+        except ImportError:
+            msg = (
+                "opentele не установлен. "
+                "Выполните: pip install opentele"
+            )
+            log(f"❌ {msg}")
+            raise AuthError(msg)
+
+        try:
+            log(f"📂 Папка tdata: {tdata_path}")
+            tdesk = TDesktop(tdata_path, passcode=passcode or None)
+
+            if not tdesk.isLoaded():
+                raise AuthError("Не удалось прочитать tdata. "
+                                "Убедитесь что Telegram Desktop закрыт.")
+
+            accounts = tdesk.accounts
+            if not accounts:
+                raise AuthError("В tdata не найдено ни одного аккаунта.")
+
+            log(f"👥 Найдено аккаунтов: {len(accounts)}")
+
+            # Берём первый (активный) аккаунт — аналог UseCurrentSession в TDL
+            log("🔄 Конвертирую сессию в формат Telethon...")
+            client = await tdesk.ToTelethon(
+                session=session_out,
+                flag=UseCurrentSession,
+            )
+
+            await client.connect()
+            me = await client.get_me()
+            await client.disconnect()
+
+            if me is None:
+                raise AuthError("Сессия импортирована, но аккаунт недоступен.")
+
+            name = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or "User"
+            log(f"✅ Импорт успешен! Аккаунт: {name} (@{me.username or '—'})")
+            logger.info("auth: tdata import ok user_id=%s", me.id)
+            return me
+
+        except AuthError:
+            raise
+        except Exception as exc:
+            logger.error("auth: tdata import failed: %s", exc)
+            raise AuthError(f"Ошибка импорта tdata: {exc}") from exc

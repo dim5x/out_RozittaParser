@@ -38,7 +38,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal, Slot, QThread
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QFrame, QInputDialog, QLabel, QLineEdit,
+    QFrame, QFileDialog, QInputDialog, QLabel, QLineEdit,
     QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
 
@@ -46,8 +46,8 @@ from config import AppConfig
 from core.ui_shared.styles import (
     ACCENT_ORANGE, ACCENT_SOFT_ORANGE,
     COLOR_SUCCESS, COLOR_ERROR, COLOR_WARNING,
-    TEXT_SECONDARY,
-    OVERLAY2_HEX, BORDER_HEX,
+    TEXT_PRIMARY, TEXT_SECONDARY,
+    OVERLAY_HEX, OVERLAY2_HEX, BORDER_HEX,
     RADIUS_MD, RADIUS_XS,
     FONT_FAMILY, FONT_SIZE_SMALL, FONT_SIZE_XS,
     QSS_INPUT, QSS_BUTTON_PRIMARY,
@@ -284,8 +284,9 @@ class AuthScreen(QWidget):
     def __init__(self, cfg: AppConfig, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._cfg     = cfg
-        self._worker:  Optional[AuthWorker]        = None
-        self._checker: Optional[SessionCheckWorker] = None
+        self._worker:       Optional[AuthWorker]        = None
+        self._checker:      Optional[SessionCheckWorker] = None
+        self._tdata_worker: Optional[TdataImportWorker]  = None
         self._build_ui()
         self._check_existing_session()
 
@@ -340,6 +341,40 @@ class AuthScreen(QWidget):
         self._login_btn.setStyleSheet(QSS_BUTTON_PRIMARY)
         self._login_btn.clicked.connect(self._start_auth)
         layout.addWidget(self._login_btn)
+
+        # Разделитель
+        sep_lbl = QLabel("— или —")
+        sep_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sep_lbl.setStyleSheet(
+            f"QLabel {{ color: {TEXT_SECONDARY}; font-size: {FONT_SIZE_XS}px;"
+            f" background: transparent; }}"
+        )
+        layout.addWidget(sep_lbl)
+
+        # Кнопка импорта из Telegram Desktop
+        self._tdata_btn = QPushButton("🖥️  Импорт из Telegram Desktop")
+        self._tdata_btn.setFixedHeight(36)
+        self._tdata_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._tdata_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {OVERLAY2_HEX};
+                border: 1px solid {BORDER_HEX};
+                border-radius: {RADIUS_MD}px;
+                color: {TEXT_SECONDARY};
+                font-family: {FONT_FAMILY};
+                font-size: {FONT_SIZE_SMALL}px;
+            }}
+            QPushButton:hover:enabled {{
+                background-color: {OVERLAY_HEX};
+                color: {TEXT_PRIMARY};
+                border-color: {ACCENT_ORANGE};
+            }}
+            QPushButton:disabled {{
+                color: rgba(255,255,255,0.25);
+            }}
+        """)
+        self._tdata_btn.clicked.connect(self._start_tdata_import)
+        layout.addWidget(self._tdata_btn)
 
         # Статус
         self._status_lbl = QLabel("Не авторизован")
@@ -414,10 +449,85 @@ class AuthScreen(QWidget):
         self._api_hash.setReadOnly(not enabled)
         self._phone.setEnabled(enabled)
         self._login_btn.setEnabled(enabled)
+        self._tdata_btn.setEnabled(enabled)
 
     # ──────────────────────────────────────────────────────────────────────
-    # ПРОВЕРКА СЕССИИ
+    # TDATA IMPORT
     # ──────────────────────────────────────────────────────────────────────
+
+    @Slot()
+    def _start_tdata_import(self) -> None:
+        """Открывает диалог выбора папки tdata и запускает импорт."""
+        from features.auth.api import AuthService
+
+        # Предлагаем автодетектированный путь как начальный
+        default_path = AuthService.detect_tdata_path() or ""
+
+        tdata_path = QFileDialog.getExistingDirectory(
+            self,
+            "Выберите папку tdata Telegram Desktop",
+            default_path or "",
+        )
+        if not tdata_path:
+            return  # пользователь закрыл диалог
+
+        self._set_controls_enabled(False)
+        self._set_status("process", "Импорт сессии...")
+        self.character_state.emit("process")
+        self.character_tip.emit("Читаю данные Telegram Desktop...")
+        self.log_message.emit(f"🖥️ Импорт из: {tdata_path}")
+
+        self._tdata_worker = TdataImportWorker(tdata_path, self._cfg, parent=self)
+        self._tdata_worker.log_message.connect(self.log_message)
+        self._tdata_worker.import_complete.connect(self._on_tdata_complete,
+                                                   Qt.UniqueConnection)
+        self._tdata_worker.error.connect(self._on_tdata_error,
+                                         Qt.UniqueConnection)
+        self._tdata_worker.character_state.connect(self.character_state)
+        self._tdata_worker.start()
+
+    @Slot(object, object)
+    def _on_tdata_complete(self, _client, user) -> None:
+        if user is None:
+            self._set_controls_enabled(True)
+            self._set_status("error", "Импорт не дал результата")
+            return
+
+        name = getattr(user, "first_name", "пользователь")
+        self._set_status("success", f"Импортирован: {name}")
+        self.character_state.emit("success")
+        self.character_tip.emit(f"Добро пожаловать, {name}! 👋")
+        self.log_message.emit(f"✅ Сессия импортирована: {name}")
+        self.auth_complete.emit(None, user)
+
+    @Slot(str)
+    def _on_tdata_error(self, error_msg: str) -> None:
+        self._set_controls_enabled(True)
+        self._set_status("error", "Ошибка импорта")
+        self.character_state.emit("error")
+        self.character_tip.emit("Ошибка импорта tdata")
+        self.log_message.emit(f"❌ {error_msg}")
+
+        # Проверяем нужна ли установка opentele
+        if "opentele" in error_msg.lower() or "pip install" in error_msg:
+            QMessageBox.information(
+                self,
+                "Требуется дополнительная библиотека",
+                "Для импорта из Telegram Desktop нужна библиотека opentele.\n\n"
+                "Установите её командой:\n"
+                "pip install opentele\n\n"
+                "После установки перезапустите приложение.",
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "Ошибка импорта",
+                f"Не удалось импортировать сессию:\n\n{error_msg}\n\n"
+                "Убедитесь что:\n"
+                "• Telegram Desktop закрыт\n"
+                "• Выбрана правильная папка tdata\n"
+                "• Папка не зашифрована паролем",
+            )
 
     def _check_existing_session(self) -> None:
         """Тихая проверка при старте. Если сессия жива — пропускаем форму."""
@@ -461,12 +571,13 @@ class AuthScreen(QWidget):
         Вызывается из MainWindow после успешного выхода (logout).
         """
         # Остановить любые незавершённые воркеры
-        for w in (self._checker, self._worker):
+        for w in (self._checker, self._worker, self._tdata_worker):
             if w is not None and w.isRunning():
                 w.quit()
                 w.wait(1000)
-        self._checker = None
-        self._worker  = None
+        self._checker      = None
+        self._worker       = None
+        self._tdata_worker = None
 
         self._set_controls_enabled(True)
         self._set_status("idle", "Не авторизован")
@@ -567,3 +678,72 @@ class AuthScreen(QWidget):
         text, ok = QInputDialog.getText(self, title, prompt, echo)
         if self._worker:
             self._worker.provide_input(text if (ok and text) else None)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TDATA IMPORT WORKER
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TdataImportWorker(QThread):
+    """
+    QThread-воркер импорта сессии из папки tdata Telegram Desktop.
+
+    Вызывает AuthService.import_from_tdata() в собственном event loop.
+    Не трогает основной session-файл до успешного завершения.
+
+    Сигналы:
+        log_message(str)
+        import_complete(object, object)  — (None, User) при успехе
+        error(str)
+        character_state(str)
+    """
+
+    log_message     = Signal(str)
+    import_complete = Signal(object, object)  # (None, user)
+    error           = Signal(str)
+    character_state = Signal(str)
+
+    def __init__(self, tdata_path: str, cfg: AppConfig,
+                 parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._tdata_path = tdata_path
+        self._cfg        = cfg
+
+    def run(self) -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._import())
+        except Exception as exc:
+            logger.exception("TdataImportWorker error")
+            self.error.emit(str(exc))
+            self.character_state.emit("error")
+        finally:
+            loop.close()
+
+    async def _import(self) -> None:
+        from features.auth.api import AuthService
+
+        self.character_state.emit("process")
+        self.log_message.emit("🖥️ Импорт сессии из Telegram Desktop...")
+
+        user = await AuthService.import_from_tdata(
+            tdata_path  = self._tdata_path,
+            session_out = self._cfg.session_path,
+            log         = self.log_message.emit,
+        )
+
+        if user is None:
+            self.error.emit("Импорт не дал результата")
+            self.character_state.emit("error")
+            return
+
+        # Сохраняем конфиг — теперь сессия активна
+        try:
+            from config import save_config
+            save_config(self._cfg)
+        except Exception as exc:
+            logger.warning("TdataImportWorker: save_config failed: %s", exc)
+
+        self.character_state.emit("success")
+        self.import_complete.emit(None, user)

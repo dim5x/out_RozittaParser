@@ -211,16 +211,13 @@ SettingsPanel
 
 ### 🔴 ФАЗА BUG-FIX (ТЕКУЩИЙ ПРИОРИТЕТ)
 
-> **Задача:** Исправить активные баги BUG-1..BUG-4 перед продолжением P1.
-
-| # | Задача | Файл |
-|---|--------|------|
-| BF-1 | ~~Исправить `GetForumTopicsRequest`~~ ✅ ЗАВЕРШЁН — позиционные аргументы + `entity` объект + `functions.messages` | `features/chats/api.py` |
-| BF-2 | Реализовать `GetDiscussionMessageRequest` для группы канала (пост+комментарии в один DOCX) | `features/parser/api.py` |
-| BF-3 | `GetFullChannelRequest`: `gather` + `Semaphore(5)` + `wait_for(timeout=15s)` + замер — **кэш в БД нужен** | `features/chats/api.py` |
-| BF-4 | Фильтрация по участникам — подключить к `CollectParams` | `features/parser/api.py` |
-
-> **Очередь:** BF-4 (фильтрация) → BF-2 (посты + комментарии) → EXPORT (EX-1..4) → кэш `linked_chat_id` в SQLite (BF-3 продолжение) → P1
+| # | Задача | Файл | Статус |
+|---|--------|------|--------|
+| BF-1 | `GetForumTopicsRequest` — позиционные аргументы + InputChannel | `features/chats/api.py` | ✅ ЗАВЕРШЁН |
+| BF-2 | `GetDiscussionMessageRequest` для пост+комментарии | `features/parser/api.py` | ⚪ В очереди |
+| BF-3 | linked_chat_id — ленивая загрузка при выборе канала вместо bulk | `features/chats/api.py`, `ui/main_window.py` | ✅ ЗАВЕРШЁН 2026-03-18 |
+| BF-4 | Фильтрация по участникам | `features/parser/api.py` | ✅ ЗАВЕРШЁН |
+| PERF-1 | **Медленная загрузка чатов** — FloodWait на новых сессиях. Частичные меры: кэш диалогов, лимит 500, lazy linked_chat. Ожидаем анализ от сообщества (Habr/GitHub issues) | — | 🔴 В работе |
 
 ---
 
@@ -228,86 +225,83 @@ SettingsPanel
 
 | # | Задача | Файл | Статус |
 |---|--------|------|--------|
-| EX-1 | **JSON экспорт** — `JsonGenerator`, плоский список объектов, STT-поле | `features/export/generator.py` | ✅ РЕАЛИЗОВАНО 2026-03-16 |
-| EX-2 | **HTML экспорт** — статическая страница с CSS | `features/export/generator.py` | ⚪ В очереди |
-| EX-3 | **FormatRow в UI** — независимые toggle-чипы DOCX / JSON / MD / HTML | `ui/main_window.py` | ✅ РЕАЛИЗОВАНО 2026-03-16 |
-| EX-4 | **ExportParams** — поля `export_formats` и `ai_split` | `features/export/ui.py` | ✅ РЕАЛИЗОВАНО 2026-03-16 |
-| EX-5 | **Markdown экспорт** — `MarkdownGenerator`, чистый формат для ИИ | `features/export/generator.py` | ✅ РЕАЛИЗОВАНО 2026-03-16 |
-| EX-6 | **AI-split чанкинг** — разбивка MD/JSON на части по 300к слов | `features/export/generator.py` | ✅ РЕАЛИЗОВАНО 2026-03-16 |
+| EX-1 | **JSON экспорт** — `JsonGenerator`, плоский список объектов, STT-поле | `features/export/generator.py` | ✅ РЕАЛИЗОВАНО |
+| EX-2 | **HTML экспорт** | `features/export/generator.py` | ⚪ В очереди |
+| EX-3 | **FormatRow** — DOCX / JSON / MD / HTML toggle-чипы | `ui/main_window.py` | ✅ РЕАЛИЗОВАНО |
+| EX-4 | **ExportParams** — `export_formats` + `ai_split` | `features/export/ui.py` | ✅ РЕАЛИЗОВАНО |
+| EX-5 | **Markdown экспорт** — `MarkdownGenerator` | `features/export/generator.py` | ✅ РЕАЛИЗОВАНО |
+| EX-6 | **AI-split чанкинг** — разбивка MD/JSON по 300к слов | `features/export/generator.py` | ✅ РЕАЛИЗОВАНО |
 
 ---
 
-### 🔧 ФАЗА CFG-1 — Proxy Support (после BUG-FIX, до P1)
+### ✅ ФАЗА TDL-AUTH — Авторизация без кода (ЗАВЕРШЕНА)
 
-> **Проблема:** Telegram нестабилен в регионах с ограничениями — без прокси/VPN соединение рвётся.
-> **Решение:** Добавить `ProxyConfig` в `AppConfig` + передавать в каждый `TelegramClient`.
-> **Зависимость:** `pip install python-socks`
+| # | Задача | Файл | Статус |
+|---|--------|------|--------|
+| TDL-1 | **tdata импорт** — `detect_tdata_path()` + `import_from_tdata()` | `features/auth/api.py` | ✅ РЕАЛИЗОВАНО |
+| TDL-2 | **UI кнопка** — `TdataImportWorker` + диалог + автодетект пути | `features/auth/ui.py` | ✅ РЕАЛИЗОВАНО |
+| TDL-3 | QR-авторизация | `features/auth/*.py` | ⚪ P3-5 |
+| TDL-4 | Takeout API для медиа | `features/parser/api.py` | ⚪ В очереди |
+
+---
+
+### 🔧 ФАЗА CFG-1 — Proxy Support (не начата)
 
 | # | Задача | Файл |
 |---|--------|------|
-| CFG-1-1 | `ProxyConfig` dataclass в `AppConfig`: `enabled`, `proxy_type` (socks5/mtproto/http), `host`, `port`, `username`, `password`, `secret` | `config.py` |
-| CFG-1-2 | Хелпер `_build_client(cfg) → TelegramClient` — централизованное создание клиента с прокси. Использовать во всех воркерах вместо прямого `TelegramClient(...)` | `core/utils.py` или `features/auth/api.py` |
-| CFG-1-3 | UI-секция "Прокси" в SettingsPanel (collapse): тип, хост, порт, логин, пароль + кнопка "Проверить соединение" | `ui/main_window.py` |
-| CFG-1-4 | Сохранение/загрузка `ProxyConfig` в `config.json` через существующий `load_config / save_config` | `config.py` |
-
-**Варианты прокси по приоритету:**
-1. **SOCKS5** ✅ Рекомендуется — универсален, работает с Clash/V2Ray/любым локальным VPN-клиентом
-2. **MTProto** — специфичен для Telegram, не требует внешнего ПО
-3. **HTTP** — наименее надёжен для MTProto-трафика
-4. **Системный VPN** — нулевые изменения в коде, пользователь включает сам
-
-**Критерий завершения CFG-1:** при включённом прокси в настройках все три воркера (Auth/Chats/Parse) создают клиент с прокси. Кнопка "Проверить соединение" показывает статус до старта парсинга.
+| CFG-1-1 | `ProxyConfig` dataclass в `AppConfig` | `config.py` |
+| CFG-1-2 | Хелпер `_build_client(cfg)` с прокси | `core/utils.py` |
+| CFG-1-3 | UI-секция "Прокси" в SettingsPanel | `ui/main_window.py` |
+| CFG-1-4 | Сохранение `ProxyConfig` в `config.json` | `config.py` |
 
 ---
 
 ### 🟡 ФАЗА P1 — Backend Improvements (не начата)
 
-> **Задача:** Два улучшения бэкенда — инкрементальный трекер и retry-декоратор.
-> **Трогаем:** `core/utils.py` (или новый `core/utils/retry.py`), `features/parser/api.py`.
-> **НЕ трогаем:** ui.py, main_window.py.
-
-| # | Задача | Источник | Файл |
-|---|--------|----------|------|
-| P1-1 | **DownloadTracker** — класс в `core/utils.py`. Хранит `downloaded_{chat_id}.txt`. Флаг `re_download: bool` в `CollectParams`. В цикле: `if tracker.is_downloaded(msg.id): continue`. После скачивания: `tracker.mark_downloaded(msg.id)` | v0.0.2 | `core/utils.py`, `features/parser/api.py` |
-| P1-2 | **Toggle "Пропускать скачанные"** в SettingsPanel → передаётся в `CollectParams(re_download=...)` | — | `ui/main_window.py` (SettingsPanel) |
-| P1-3 | **Retry-декоратор** `@async_retry(max_attempts=3, base_delay=1.0, backoff=2.0)` — экспоненциальный backoff. Заменяет 4 inline-копии retry-логики в `parser/api.py` | tdl-master | `core/utils/retry.py` (новый файл) |
-
-**Критерий завершения P1:** Повторный запуск парсинга пропускает уже скачанные файлы. Retry работает через декоратор, дублирования нет.
+| # | Задача | Файл |
+|---|--------|------|
+| P1-1 | **DownloadTracker** — инкрементальный трекер | `core/utils.py`, `features/parser/api.py` |
+| P1-2 | Toggle "Перекачать медиа" в SettingsPanel | `ui/main_window.py` |
+| P1-3 | **@async_retry** — декоратор с exponential backoff | `core/retry.py` ✅ уже есть |
 
 ---
 
 ### 🔵 ФАЗА P2 — Performance & Filters (после P1)
 
-| # | Задача | Источник | Файл |
-|---|--------|----------|------|
-| P2-1 | **asyncio.Semaphore(3)** — параллельная загрузка медиа + `create_task()`. | tdl-master | `features/parser/api.py` |
-| P2-2 | **Expression filter** — `filter_expression: Optional[str]` в `CollectParams`. Поле "Расширенный фильтр" в AdvancedFilters. `simpleeval` библиотека. | tdl-master | `features/parser/api.py`, `ui/main_window.py` |
-| P2-3 | **upsert_messages_batch** — `INSERT OR REPLACE` + UNIQUE INDEX `(chat_id, message_id)` для идемпотентности | v0.0.2 | `core/database.py` |
-| P2-4 | **STT-video** — добавить `video` в `STT_FILE_TYPES` | — | `core/stt/worker.py` |
-| P2-5 | **STT-GPU** — поддержка CUDA (`device="cuda"`) через `AppConfig` | — | `config.py`, `core/stt/whisper_manager.py` |
+| # | Задача | Файл |
+|---|--------|------|
+| P2-1 | `asyncio.Semaphore(3)` параллельная загрузка медиа | `features/parser/api.py` |
+| P2-2 | Expression filter (`simpleeval`) + UI-поле | `features/parser/api.py`, `ui/main_window.py` |
+| P2-3 | `upsert_messages_batch` — идемпотентность | `core/database.py` |
+| P2-4 | STT-video — добавить `video` в `STT_FILE_TYPES` | `core/stt/worker.py` |
+| P2-5 | STT-GPU — CUDA через `AppConfig` | `config.py`, `core/stt/whisper_manager.py` |
 
 ---
 
-### ⚪ ФАЗА P3 — Quality & Features (пауза, после стабилизации P2)
+### 🌍 ФАЗА I18N — Поддержка английского языка (запланирована)
 
-> ⚠️ **КОГДА ПЕРЕХОДИТЬ К ТЕСТАМ:**
-> Тесты запускаются **после завершения P2** (приложение стабильно, все основные баги закрыты).
-> Порядок: P2 стабилизация → **P3-2..P3-4 (pytest)** → P3-5 (QR-авт.) → P3-6 (CI) → **P3-7 (.exe)**.
-> Файл с тест-планом и кейсами: **`TESTS_PLAN.md`**.
-> Перед запуском тестов убедиться: `pytest`, `pytest-asyncio`, `pytest-mock`, `pytest-cov`, `pytest-timeout` установлены.
+> **Подход:** переключатель ru/en в настройках, строки вынесены в словари.
+> **Приоритет:** после стабилизации P2 — не блокирует текущий функционал.
+
+| # | Задача | Файл |
+|---|--------|------|
+| I18N-1 | Создать `core/i18n.py` — словари `STRINGS_RU` / `STRINGS_EN`, функция `t(key)` | `core/i18n.py` (новый) |
+| I18N-2 | Переключатель языка в SettingsPanel (сохраняется в `config_modern.json`) | `ui/main_window.py`, `config.py` |
+| I18N-3 | Заменить все строки UI на `t(...)` | все `ui/` и `features/*/ui.py` |
+| I18N-4 | README и документация на EN уже добавлены | `README.md` | ✅ |
+
+---
+
+### ⚪ ФАЗА P3 — Quality & Features (пауза)
 
 | # | Задача | Файл |
 |---|--------|------|
 | P3-1 | `PRAGMA wal_autocheckpoint = 100` | `core/database.py` |
-| P3-2 | pytest: `tests/test_core/test_database.py` — WAL, batch, upsert, transcriptions | `tests/test_core/` |
-| P3-3 | pytest: `tests/test_core/test_merger.py` — MergerService edge cases | `tests/test_core/` |
-| P3-4 | pytest: `tests/test_core/test_utils.py` — finalize_telegram_id, DownloadTracker | `tests/test_core/` |
-| P3-4b | pytest: `tests/test_features/test_export.py` — DocxGenerator, xml_magic | `tests/test_features/` |
-| P3-4c | pytest: `tests/test_features/test_parser.py` — collect_data с моками | `tests/test_features/` |
-| P3-5 | QR-авторизация через `client.qr_login()` | `features/auth/api.py`, `features/auth/ui.py` |
-| P3-6 | CI GitHub Actions: pytest + mypy на каждый PR | `.github/workflows/` |
-| P3-7 | **PyInstaller .exe bundle** — ⚠️ **ТРЕБУЕТ ПОДТВЕРЖДЕНИЯ ПОЛЬЗОВАТЕЛЯ** перед запуском сборки. Команда: `pyinstaller --onefile --windowed --name RozittaParser --add-data "assets;assets" main.py`. Проверить наличие FFmpeg в сборке. | — |
-| P3-8 | Пауза/отмена парсинга (asyncio.Event) | `features/parser/api.py`, `ui/main_window.py` |
+| P3-2..4 | pytest: database, merger, utils, export, parser | `tests/` |
+| P3-5 | QR-авторизация | `features/auth/*.py` |
+| P3-6 | CI GitHub Actions: pytest + mypy | `.github/workflows/` |
+| P3-7 | PyInstaller .exe bundle (opentele в hiddenimports) | `rozitta_parser.spec` |
+| P3-8 | Пауза/отмена парсинга (asyncio.Event) | `features/parser/api.py` |
 
 ---
 
@@ -347,17 +341,39 @@ SettingsPanel
 
 ---
 
-## 🐛 4b. БАГИ (обновлено 2026-03-16)
+## 🐛 4b. БАГИ (обновлено 2026-03-18)
 
 | # | Описание | Файл | Статус |
 |---|----------|------|--------|
 | BUG-2 | Посты + комментарии: `include_comments` не передавался в ExportParams | `ui/main_window.py` | ✅ ИСПРАВЛЕН 2026-03-14 |
-| BUG-3 | 🟡 ЧАСТИЧНО исправлен: `Semaphore(3)` + `timeout=8.0`. Полное решение — кэш `linked_chat_id` в SQLite | `features/chats/api.py` | 🟡 MEDIUM |
+| BUG-3 | linked_chat_id: bulk-запрос убран, теперь ленивая загрузка при выборе канала | `features/chats/api.py`, `ui/main_window.py` | ✅ ИСПРАВЛЕН 2026-03-18 |
 | BUG-4 | Фильтрация по участникам: `user_id: int` → `user_ids: List[int]` | `features/parser/api.py`, `features/parser/ui.py` | ✅ ИСПРАВЛЕН 2026-03-14 |
 | BUG-5 | `Signal(dict)` → RuntimeError в PySide6 при emit TopicsWorker | `features/chats/ui.py:183` | ✅ ИСПРАВЛЕН 2026-03-14 |
 | BUG-6 | TopicsWorker: 0 веток (следствие BUG-5) | `features/chats/ui.py` | ✅ ИСПРАВЛЕН 2026-03-14 |
-| BUG-7 | `database is locked` при старте ChatsWorker после авторизации — race condition: AuthWorker передавал живой client через сигнал, MainWindow делал `new_event_loop().run_until_complete(client.disconnect())` в главном потоке | `features/auth/ui.py`, `ui/main_window.py` | ✅ ИСПРАВЛЕН 2026-03-16 |
-| BUG-8 | api_id / api_hash / phone не сохранялись на диск — при каждом запуске поля пустые, `save_config()` нигде не вызывалась | `features/auth/ui.py` | ✅ ИСПРАВЛЕН 2026-03-16 |
+| BUG-7 | `database is locked` при старте ChatsWorker после авторизации — race condition | `features/auth/ui.py`, `ui/main_window.py` | ✅ ИСПРАВЛЕН 2026-03-16 |
+| BUG-8 | api_id / api_hash / phone не сохранялись на диск | `features/auth/ui.py` | ✅ ИСПРАВЛЕН 2026-03-16 |
+| BUG-9 | STT запускался всегда, даже если все чипы выключены | `ui/main_window.py` | ✅ ИСПРАВЛЕН 2026-03-18 |
+| BUG-10 | Статус «Генерация DOCX» — хардкод вместо реальных форматов | `ui/main_window.py` | ✅ ИСПРАВЛЕН 2026-03-18 |
+| BUG-11 | Артефакт-линия в заголовках секций — конфликт двух QLayout в SectionTitle | `core/ui_shared/widgets.py` | ✅ ИСПРАВЛЕН 2026-03-18 |
+| BUG-12 | Кнопки фильтра лога обрезались (min-width: 0) | `core/ui_shared/styles.py` | ✅ ИСПРАВЛЕН 2026-03-18 |
+| BUG-13 | GetForumTopicsRequest не получал названия веток — передавался Channel вместо InputChannel | `features/chats/api.py` | ✅ ИСПРАВЛЕН 2026-03-17 |
+| PERF-1 | Загрузка чатов ~30 мин — причина: Telegram FloodWait на новых сессиях + DEBUG-лог в файл | — | 🔴 ОТКРЫТ, ждём фидбека от сообщества |
+
+---
+
+### ✅ ФАЗА TDL-AUTH — Авторизация без кода (ЧАСТИЧНО РЕАЛИЗОВАНА)
+
+| # | Задача | Файл | Статус |
+|---|--------|------|--------|
+| TDL-1 | **tdata импорт** — `AuthService.import_from_tdata()` + `detect_tdata_path()` | `features/auth/api.py` | ✅ РЕАЛИЗОВАНО 2026-03-18 |
+| TDL-2 | **UI кнопка** — «🖥️ Импорт из Telegram Desktop» + `TdataImportWorker` + диалог выбора папки | `features/auth/ui.py` | ✅ РЕАЛИЗОВАНО 2026-03-18 |
+| TDL-3 | **QR-авторизация** — `client.qr_login()` + QLabel с QPixmap | `features/auth/api.py`, `features/auth/ui.py` | ⚪ В очереди (P3-5) |
+| TDL-4 | **Takeout API** — `async with client.takeout(files=True)` для медиа | `features/parser/api.py` | ⚪ В очереди |
+
+> **Зависимость:** `pip install opentele` (включена в `requirements.txt`, в `.spec` в hiddenimports)
+> **Результат:** пользователь нажимает кнопку, выбирает папку tdata — вход без кода за ~5 сек.
+
+---
 
 ---
 
@@ -436,6 +452,6 @@ SettingsPanel
 ---
 
 **Анализ создан:** 2025-02-12
-**Последнее обновление:** 2026-03-16 (BUG-7 race-condition SQLite; BUG-8 save_config; EX-1/3/4/5/6 JSON+MD+ai_split реализованы; roadmap актуализирован)
-**Версия:** 4.3
+**Последнее обновление:** 2026-03-18 (TDL-AUTH завершён, BF-3 закрыт, I18N в roadmap, PERF-1 открыт, баги 9-13 исправлены)
+**Версия:** 4.4
 **Автор:** Claude (Anthropic)

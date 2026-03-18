@@ -39,7 +39,7 @@ from PySide6.QtCore import Qt, Signal, Slot, QThread, QUrl
 from PySide6.QtGui import QFont, QDesktopServices
 from PySide6.QtWidgets import (
     QFrame, QFileDialog, QInputDialog, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QVBoxLayout, QWidget,
+    QMessageBox, QPushButton, QVBoxLayout, QWidget, QApplication 
 )
 
 from config import AppConfig
@@ -520,7 +520,7 @@ class AuthScreen(QWidget):
             text:    HTML-текст пояснения (над командой).
             command: Команда pip install ... для копирования.
         """
-        from PySide6.QtWidgets import QDialog, QHBoxLayout
+        from PySide6.QtWidgets import QDialog, QHBoxLayout 
         from PySide6.QtGui import QClipboard
 
         dlg = QDialog(self)

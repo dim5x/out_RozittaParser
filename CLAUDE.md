@@ -3,7 +3,7 @@
 ## 📋 О проекте
 
 **Название:** Rozitta Parser (Telegram Archiver)
-**Версия:** 4.0 (Multi-format export: DOCX + JSON + MD; AI-split chunking; session persistence fix)
+**Версия:** 4.1 (tdata-импорт; диалог установки библиотек; кэш диалогов; lazy linked_chat; исправления UI)
 **Тип:** Desktop приложение (PySide6)
 **Назначение:** Архивирование сообщений из Telegram чатов с созданием DOCX / JSON / MD документов
 
@@ -12,17 +12,18 @@
 ## 🎯 Основная функциональность
 
 1. **Авторизация в Telegram** через Telethon (сессия и api_id/hash/phone сохраняются после входа)
-2. **Загрузка списка чатов** (каналы, группы, форумы, диалоги — коллапсируемые секции)
-3. **Парсинг сообщений** с фильтрацией по глубине / медиа / пользователю
-4. **Скачивание медиа** в структурированные папки
-5. **Склейка сообщений** (агрессивная эвристика: один автор, ≤60 сек)
-6. **Генерация DOCX** с изображениями, ссылками, закладками
-7. **Работа с форумами/топиками**
-8. **Посты + комментарии** (канал + linked группа)
-9. **Распознавание речи** (faster-whisper, ✅ РЕАЛИЗОВАНО — голосовые/кружочки → текст в DOCX)
-10. **JSON экспорт** (✅ РЕАЛИЗОВАНО — плоский список объектов, совместим с NotebookLM)
-11. **Markdown экспорт** (✅ РЕАЛИЗОВАНО — чистый формат для ИИ-инструментов)
-12. **AI-split чанкинг** (✅ РЕАЛИЗОВАНО — разбивка MD/JSON на части по 300к слов)
+2. **Импорт сессии из Telegram Desktop** — кнопка «🖥️ Импорт из tdata», без ввода кода (opentele)
+3. **Загрузка списка чатов** (каналы, группы, форумы, диалоги — коллапсируемые секции; кэш 24ч)
+4. **Парсинг сообщений** с фильтрацией по глубине / медиа / пользователю
+5. **Скачивание медиа** в структурированные папки
+6. **Склейка сообщений** (агрессивная эвристика: один автор, ≤60 сек)
+7. **Генерация DOCX** с изображениями, ссылками, закладками
+8. **Работа с форумами/топиками**
+9. **Посты + комментарии** (канал + linked группа)
+10. **Распознавание речи** (faster-whisper, ✅ РЕАЛИЗОВАНО — голосовые/кружочки → текст в DOCX)
+11. **JSON экспорт** (✅ РЕАЛИЗОВАНО — плоский список объектов, совместим с NotebookLM)
+12. **Markdown экспорт** (✅ РЕАЛИЗОВАНО — чистый формат для ИИ-инструментов)
+13. **AI-split чанкинг** (✅ РЕАЛИЗОВАНО — разбивка MD/JSON на части по 300к слов)
 
 ---
 
@@ -564,16 +565,18 @@ _run_export(collect_result)
 | `core/stt/audio_converter.py` | ✅ Готов | — |
 | `core/stt/whisper_manager.py` | ✅ Готов | 2026-03-09 Singleton |
 | `core/stt/worker.py` | ✅ Готов | 2026-03-09 STTWorker |
-| `features/auth/api.py` | ✅ Готов | — |
-| `features/auth/ui.py` | ✅ Готов | 2026-03-16 save_config после входа; race-condition fix |
-| `features/chats/api.py` | ✅ Готов | 2026-03-10 BUG-1 исправлен |
-| `features/chats/ui.py` | ✅ Готов | 2026-03-14 BUG-5/BUG-6 исправлены (Signal(object)) |
-| `features/parser/api.py` | ✅ Готов | 2026-03-10 TOPIC_ID_INVALID → пропуск |
-| `features/parser/ui.py` | ✅ Готов | 2026-03-08 own TelegramClient |
+| `features/auth/api.py` | ✅ Готов | 2026-03-18 tdata import + detect_tdata_path |
+| `features/auth/ui.py` | ✅ Готов | 2026-03-18 TdataImportWorker + кнопка импорта + диалог pip |
+| `features/chats/api.py` | ✅ Готов | 2026-03-18 lazy linked_chat + кэш диалогов |
+| `features/chats/ui.py` | ✅ Готов | 2026-03-18 лимит 500, LinkedGroupWorker |
+| `features/parser/api.py` | ✅ Готов | 2026-03-17 периодический flush батча |
+| `features/parser/ui.py` | ✅ Готов | — |
 | `features/export/generator.py` | ✅ Готов | 2026-03-16 JsonGenerator + MarkdownGenerator + ai_split |
 | `features/export/xml_magic.py` | ✅ Готов | — |
 | `features/export/ui.py` | ✅ Готов | 2026-03-16 ExportParams(export_formats, ai_split) |
-| `ui/main_window.py` | ✅ Готов | 2026-03-16 MD чип + AI-split toggle + QTimer race-fix |
+| `ui/main_window.py` | ✅ Готов | 2026-03-18 STT по чипам, статус форматов, артефакты иконок |
+| `core/ui_shared/widgets.py` | ✅ Готов | 2026-03-18 fix SectionTitle HLine артефакт |
+| `core/ui_shared/styles.py` | ✅ Готов | 2026-03-18 fix FilterButton min-width |
 | `main.py` | ✅ Готов | — |
 
 ---
@@ -683,8 +686,8 @@ pyinstaller rozitta_parser.spec --noconfirm
 
 ---
 
-**Последнее обновление:** 2026-03-16 (race-condition fix на SQLite-сессии; save_config после входа; JSON/MD экспорт; ai_split чанкинг; MD чип в UI; ExportParams.ai_split)
-**Версия документа:** 4.2
+**Последнее обновление:** 2026-03-18 (tdata-импорт; диалоги установки библиотек; кэш диалогов 24ч; lazy linked_chat; STT по чипам; fix артефактов UI; I18N в roadmap)
+**Версия документа:** 4.3
 **Автор:** Claude (Anthropic)
 
 

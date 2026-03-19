@@ -121,7 +121,7 @@ class _FileFormatter(logging.Formatter):
 def setup_logging(
     level:        int | str         = logging.INFO,
     log_file:     Optional[str]     = DEFAULT_LOG_FILE,
-    file_level:   int | str         = logging.DEBUG,
+    file_level:   int | str         = logging.INFO,
     console:      bool              = True,
     use_color:    bool              = True,
     log_dir:      Optional[str]     = None,

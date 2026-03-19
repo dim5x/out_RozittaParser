@@ -413,33 +413,32 @@ class ChatsService:
         scan_limit: int = 500,
     ) -> Dict[int, str]:
         """
-        Fallback: определяет топики по полю reply_to_top_id в сообщениях.
-
-        Менее точный метод — заголовки топиков будут вида «Топик #ID».
-        Используется только если GetForumTopicsRequest не сработал.
-
-        Args:
-            entity:      InputChannel сущность.
-            log:         Колбэк для логов.
-            scan_limit:  Сколько последних сообщений просканировать.
-
-        Returns:
-            Словарь {topic_id: «Топик #ID»}.
+        Fallback: определяет топики по сообщениям и ищет их названия в сервисных событиях.
         """
         seen_topics: Dict[int, str] = {}
 
         async for message in self._client.iter_messages(entity, limit=scan_limit):
+            # 1. Проверяем, не является ли само сообщение событием создания топика
+            # В таких сообщениях обычно лежит реальное название
+            action = getattr(message, "action", None)
+            if action and hasattr(action, "title"):
+                # Для сообщений о создании топика ID ветки — это ID самого сообщения
+                seen_topics[message.id] = action.title
+                continue
+
+            # 2. Если это обычное сообщение, смотрим, к какому топику оно относится
             reply_to = getattr(message, "reply_to", None)
             if reply_to:
                 top_id = getattr(reply_to, "reply_to_top_id", None)
                 if top_id and top_id not in seen_topics:
-                    seen_topics[top_id] = f"Топик #{top_id} (из сообщений)"
+                    # Если название еще не нашли через 'action', ставим временное
+                    seen_topics[top_id] = f"Ветка #{top_id}"
 
         if seen_topics:
             log(f"📊 Найдено топиков через сканирование: {len(seen_topics)}")
             logger.info("chats: fallback scan → %d topics", len(seen_topics))
         else:
-            log("ℹ️ В этом форуме нет топиков (или первые 500 сообщений без reply_to)")
+            log("ℹ️ В этом форуме нет топиков (или сообщения без структуры)")
 
         return seen_topics
 

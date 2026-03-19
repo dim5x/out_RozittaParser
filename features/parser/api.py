@@ -531,6 +531,7 @@ class ParserService:
                     f"[DIAG] iter_messages → entity={getattr(entity, 'id', '?')} "
                     f"topic_id={topic_id} max_id={_max_id_arg} attempt={attempts}"
                 )
+                 # добавили limit и wait_time:
                 async for message in self._client.iter_messages(
                     entity,
                     reply_to=topic_id,
@@ -538,6 +539,8 @@ class ParserService:
                     # Продолжаем с последнего известного ID при рестарте после FloodWait
                     max_id=_max_id_arg,
                     reverse=False,
+                    limit=100,    # Берем по максимуму за один запрос
+                    wait_time=0,  # Убираем искусственную паузу Telethon
                 ):
                     last_message_id = message.id
                     _iter_msg_count += 1

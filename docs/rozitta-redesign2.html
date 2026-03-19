@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rozitta Parser – Telegram Data Extraction</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary:    #1a1a1a;
+            --bg-secondary:  #242424;
+            --bg-tertiary:   #2d2d2d;
+            --border-light:  rgba(255,255,255,0.08);
+            --border-mid:    rgba(255,255,255,0.12);
+            --text-primary:  #f5f5f5;
+            --text-secondary:#b0b0b0;
+            --text-tertiary: #808080;
+            --accent-orange: #ff9500;
+            --accent-pink:   #ff6bc9;
+            --accent-blue:   #4488ff;
+            --success:       #10b981;
+            --error:         #ef4444;
+            --warning:       #f59e0b;
+            --radius-sm:     6px;
+            --radius-md:     10px;
+            --radius-lg:     14px;
+            --shadow-sm:     0 2px 8px rgba(0,0,0,0.3);
+            --shadow-md:     0 8px 24px rgba(0,0,0,0.4);
+            --shadow-lg:     0 16px 40px rgba(0,0,0,0.5);
+            --trans:         all 0.18s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ── LAYOUT ── */
+        .app {
+            display: grid;
+            grid-template-rows: 56px 1fr;
+            height: 100vh;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-light);
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-orange));
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-orange));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-mid);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .status-dot.online {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        /* ── WORKSPACE ── */
+        .workspace {
+            display: grid;
+            grid-template-columns: 200px 1fr 320px;
+            overflow: hidden;
+            gap: 0;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-light);
+            padding: 16px 12px;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .sidebar-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            padding: 12px 12px 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--trans);
+            font-family: inherit;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(255, 149, 0, 0.12);
+            border-color: rgba(255, 149, 0, 0.3);
+            color: var(--accent-orange);
+        }
+
+        .step-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--border-mid);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+            transition: var(--trans);
+        }
+
+        .nav-item.active .step-badge {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: white;
+        }
+
+        .nav-item.done .step-badge {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .sidebar-spacer { flex: 1; }
+
+        .sidebar-info {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(255, 149, 0, 0.08);
+            border: 1px dashed rgba(255, 149, 0, 0.2);
+            border-radius: var(--radius-sm);
+        }
+
+        .sidebar-info-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 6px;
+        }
+
+        .sidebar-info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-orange);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── MAIN CONTENT ── */
+        .main-content {
+            overflow-y: auto;
+            padding: 20px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 149, 0, 0.4) transparent;
+        }
+
+        .main-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .main-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 149, 0, 0.4);
+            border-radius: 3px;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 149, 0, 0.12);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-orange);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* ── FORM ELEMENTS ── */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: var(--trans);
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .input-icon.clickable {
+            pointer-events: auto;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: var(--trans);
+        }
+
+        .input-icon.clickable:hover {
+            color: var(--accent-orange);
+        }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: var(--trans);
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: var(--border-mid);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #e08500;
+            border-color: #e08500;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 107, 201, 0.12);
+            border-color: rgba(255, 107, 201, 0.3);
+            color: var(--accent-pink);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 107, 201, 0.2);
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        /* ── TABS & SECTIONS ── */
+        .auth-method-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .method-option {
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--trans);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .method-option:hover {
+            border-color: var(--accent-orange);
+            background: rgba(255, 149, 0, 0.08);
+        }
+
+        .method-option.active {
+            background: rgba(255, 149, 0, 0.2);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        /* ── CHATS LIST ── */
+        .chats-container {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            max-height: 380px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 149, 0, 0.3) transparent;
+        }
+
+        .chat-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border-light);
+            transition: var(--trans);
+            user-select: none;
+        }
+
+        .chat-group-header:hover {
+            background: rgba(255,255,255,0.07);
+        }
+
+        .chat-group-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .chat-group-count {
+            font-size: 11px;
+            background: rgba(255,255,255,0.08);
+            padding: 2px 8px;
+            border-radius: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            cursor: pointer;
+            transition: var(--trans);
+            border-left: 3px solid transparent;
+        }
+
+        .chat-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .chat-item.selected {
+            background: rgba(255, 149, 0, 0.12);
+            border-left-color: var(--accent-orange);
+        }
+
+        .chat-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            background: rgba(255, 149, 0, 0.12);
+            color: var(--accent-orange);
+        }
+
+        .chat-info { flex: 1; min-width: 0; }
+
+        .chat-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* ── SETTINGS GRID ── */
+        .settings-section {
+            margin-bottom: 28px;
+        }
+
+        .settings-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .settings-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .settings-subtitle {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Media Grid */
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .media-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 12px 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--trans);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .media-btn:hover {
+            border-color: var(--border-light);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .media-btn.active {
+            background: rgba(255, 149, 0, 0.15);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .media-btn i { font-size: 18px; }
+
+        /* Slider */
+        .slider-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .slider-value {
+            color: var(--accent-orange);
+            font-weight: 600;
+        }
+
+        .range-slider {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--bg-tertiary);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            margin-bottom: 16px;
+            cursor: pointer;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-orange);
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(255, 149, 0, 0.4);
+        }
+
+        .range-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-orange);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 6px rgba(255, 149, 0, 0.4);
+        }
+
+        /* Toggle */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 24px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: var(--trans);
+            border: 1px solid var(--border-mid);
+            flex-shrink: 0;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: var(--trans);
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(16px);
+        }
+
+        /* Chips */
+        .chips-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-mid);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--trans);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .chip:hover {
+            border-color: var(--accent-orange);
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .chip.active {
+            background: rgba(255, 149, 0, 0.15);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .chip i { font-size: 12px; }
+
+        /* ── RIGHT PANEL ── */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-light);
+            overflow: hidden;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+
+        /* Character */
+        .character-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 24px 20px 20px;
+            text-align: center;
+        }
+
+        .character-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 107, 201, 0.2), rgba(255, 149, 0, 0.1));
+            border: 2px solid var(--accent-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: var(--trans);
+            box-shadow: 0 0 16px rgba(255, 107, 201, 0.15);
+        }
+
+        .character-avatar:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 24px rgba(255, 107, 201, 0.25);
+        }
+
+        .character-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--accent-pink);
+        }
+
+        .character-message {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            max-height: 48px;
+            overflow: hidden;
+            word-break: break-word;
+        }
+
+        /* Log section */
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .log-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .log-title i { color: var(--accent-orange); }
+
+        .log-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .log-filters {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-mid);
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            transition: var(--trans);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--border-light);
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 149, 0, 0.15);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .log-output {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            color: var(--text-tertiary);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 149, 0, 0.3) transparent;
+            margin-bottom: 12px;
+        }
+
+        .log-line {
+            margin-bottom: 2px;
+            padding-bottom: 2px;
+            border-bottom: 1px dashed rgba(255,255,255,0.03);
+        }
+
+        .log-time { color: var(--text-tertiary); }
+        .log-msg { color: var(--text-secondary); }
+        .log-success { color: var(--success); }
+        .log-warning { color: var(--warning); }
+        .log-error { color: var(--error); }
+
+        /* Progress */
+        .progress-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-pink), var(--accent-orange));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* Start button */
+        .start-section {
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        /* ── TOAST ── */
+        .toast-container {
+            position: fixed;
+            top: 72px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-md);
+            font-size: 13px;
+            min-width: 240px;
+            max-width: 320px;
+            animation: slideIn 0.2s ease;
+            pointer-events: auto;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(24px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--error); }
+        .toast.warning { border-left: 3px solid var(--warning); }
+        .toast.info { border-left: 3px solid var(--accent-orange); }
+
+        .toast i { font-size: 14px; }
+        .toast.success i { color: var(--success); }
+        .toast.error i { color: var(--error); }
+        .toast.warning i { color: var(--warning); }
+        .toast.info i { color: var(--accent-orange); }
+    </style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">✦</div>
+            <span class="logo-text">Rozitta Parser</span>
+        </div>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            <span id="statusText">Не авторизован</span>
+        </div>
+    </header>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="sidebar-label">Процесс</div>
+
+            <button class="nav-item active" data-tab="auth">
+                <span class="step-badge">1</span>
+                <span>Авторизация</span>
+            </button>
+
+            <button class="nav-item" data-tab="chats">
+                <span class="step-badge">2</span>
+                <span>Выбор чатов</span>
+            </button>
+
+            <button class="nav-item" data-tab="settings">
+                <span class="step-badge">3</span>
+                <span>Настройки</span>
+            </button>
+
+            <div class="sidebar-spacer"></div>
+
+            <div class="sidebar-info">
+                <div class="sidebar-info-label">Текущий чат</div>
+                <div class="sidebar-info-value">—</div>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- AUTH TAB -->
+            <div class="tab-panel active" id="tab-auth">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-key"></i></div>
+                        <div>
+                            <div class="card-title">Авторизация Telegram</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">API ID</label>
+                        <div class="input-wrapper">
+                            <input type="text" class="form-input" placeholder="Введите API ID" id="apiId">
+                            <span class="input-icon"><i class="fas fa-hashtag"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">API Hash</label>
+                        <div class="input-wrapper">
+                            <input type="password" class="form-input" placeholder="Введите API Hash" id="apiHash">
+                            <button class="input-icon clickable" id="toggleHash" type="button">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Номер телефона</label>
+                        <div class="input-wrapper">
+                            <input type="tel" class="form-input" placeholder="+79001234567" id="phone">
+                            <span class="input-icon"><i class="fas fa-phone"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Метод входа</label>
+                        <div class="auth-method-group">
+                            <div class="method-option active" data-method="phone">
+                                <i class="fas fa-mobile-alt"></i><br>По телефону
+                            </div>
+                            <div class="method-option" data-method="qr">
+                                <i class="fas fa-qrcode"></i><br>QR-код
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary flex-1">
+                            <i class="fas fa-upload"></i> Импорт сессии
+                        </button>
+                        <button class="btn btn-primary flex-1" id="authBtn">
+                            <i class="fas fa-sign-in-alt"></i> Авторизоваться
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHATS TAB -->
+            <div class="tab-panel" id="tab-chats">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-comments"></i></div>
+                        <div class="card-title">Ваши чаты</div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="input-wrapper">
+                            <input type="search" class="form-input" placeholder="🔍 Поиск чата...">
+                            <span class="input-icon"><i class="fas fa-search"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="chats-container">
+                        <!-- Channels -->
+                        <div class="chat-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <div class="chat-group-title">
+                                <i class="fas fa-bullhorn"></i> Каналы
+                                <span class="chat-group-count">8</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                        <div style="display: block;">
+                            <div class="chat-item selected">
+                                <div class="chat-avatar"><i class="fas fa-bullhorn"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Тестовый канал</div>
+                                    <div class="chat-meta">1.2K подписчиков</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar"><i class="fas fa-bullhorn"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Новости проекта</div>
+                                    <div class="chat-meta">5.4K подписчиков</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Groups -->
+                        <div class="chat-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <div class="chat-group-title">
+                                <i class="fas fa-users"></i> Группы
+                                <span class="chat-group-count">12</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                        <div style="display: block;">
+                            <div class="chat-item">
+                                <div class="chat-avatar"><i class="fas fa-users"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Рабочая группа</div>
+                                    <div class="chat-meta">48 участников</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Forums -->
+                        <div class="chat-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <div class="chat-group-title">
+                                <i class="fas fa-comments"></i> Форумы
+                                <span class="chat-group-count">3</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                        <div style="display: block;">
+                            <div class="chat-item">
+                                <div class="chat-avatar"><i class="fas fa-comments"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Обсуждения</div>
+                                    <div class="chat-meta">12 тем</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DMs -->
+                        <div class="chat-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <div class="chat-group-title">
+                                <i class="fas fa-user"></i> Личные чаты
+                                <span class="chat-group-count">24</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                        <div style="display: none;">
+                            <div class="chat-item">
+                                <div class="chat-avatar" style="background: rgba(68, 136, 255, 0.12); color: var(--accent-blue);"><i class="fas fa-user"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Иван Петров</div>
+                                    <div class="chat-meta">был недавно</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar" style="background: rgba(68, 136, 255, 0.12); color: var(--accent-blue);"><i class="fas fa-user"></i></div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Анна Сидорова</div>
+                                    <div class="chat-meta">онлайн</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-block">
+                        <i class="fas fa-sync-alt"></i> Обновить список
+                    </button>
+                </div>
+            </div>
+
+            <!-- SETTINGS TAB -->
+            <div class="tab-panel" id="tab-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-cog"></i></div>
+                        <div class="card-title">Параметры парсинга</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Выбранный чат</label>
+                        <input type="text" class="form-input" readonly placeholder="Выберите чат на шаге 2" value="—">
+                    </div>
+
+                    <!-- Media Download -->
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <span class="settings-title"><i class="fas fa-download"></i> Медиафайлы</span>
+                        </div>
+                        <div class="media-grid">
+                            <div class="media-btn active" data-type="photo"><i class="fas fa-image"></i><span>Фото</span></div>
+                            <div class="media-btn active" data-type="video"><i class="fas fa-video"></i><span>Видео</span></div>
+                            <div class="media-btn active" data-type="voice"><i class="fas fa-microphone"></i><span>Аудио</span></div>
+                            <div class="media-btn active" data-type="file"><i class="fas fa-file"></i><span>Файлы</span></div>
+                        </div>
+                        <div class="slider-row">
+                            <span>Параллельные загрузки</span>
+                            <span class="slider-value" id="parallelValue">3</span>
+                        </div>
+                        <input type="range" class="range-slider" min="1" max="8" value="3" id="parallelSlider">
+
+                        <div class="toggle-row">
+                            <span>Пропускать уже скачанные</span>
+                            <div class="toggle-switch active" id="incrementalSwitch"></div>
+                        </div>
+                    </div>
+
+                    <!-- Speech Recognition -->
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <span class="settings-title"><i class="fas fa-microphone-alt"></i> Распознавание речи</span>
+                        </div>
+                        <div class="chips-group">
+                            <div class="chip active"><i class="fas fa-video"></i> Видео</div>
+                            <div class="chip active"><i class="fas fa-microphone"></i> Аудио</div>
+                            <div class="chip"><i class="fas fa-circle"></i> Кружки</div>
+                        </div>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <span class="settings-title"><i class="fas fa-calendar"></i> Период загрузки</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">С даты</label>
+                                <input type="text" class="form-input" placeholder="первое сообщение">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">По дату</label>
+                                <input type="text" class="form-input" placeholder="текущая дата">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Format -->
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <span class="settings-title"><i class="fas fa-file-export"></i> Экспорт</span>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Формат файла</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                <button class="btn active" style="background: rgba(255, 149, 0, 0.15); border-color: var(--accent-orange); color: var(--accent-orange);">DOCX</button>
+                                <button class="btn">JSON</button>
+                                <button class="btn">HTML</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside class="right-panel">
+
+            <!-- Character Section -->
+            <div class="character-section">
+                <div class="character-avatar">✨</div>
+                <div class="character-name">Розитта</div>
+                <div class="character-message" id="characterTip">Начните с авторизации</div>
+            </div>
+
+            <!-- Log Section -->
+            <div class="panel-section" style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 16px 20px;">
+                <div class="log-header">
+                    <div class="log-title">
+                        <i class="fas fa-terminal"></i> Журнал
+                    </div>
+                    <div class="log-actions">
+                        <button class="btn btn-sm" id="clearLogBtn" title="Очистить"><i class="fas fa-broom"></i></button>
+                        <button class="btn btn-sm" id="copyLogBtn" title="Копировать"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="log-filters">
+                    <button class="filter-btn active" data-filter="all">Все</button>
+                    <button class="filter-btn" data-filter="info">Инфо</button>
+                    <button class="filter-btn" data-filter="success">Успех</button>
+                    <button class="filter-btn" data-filter="error">Ошибки</button>
+                </div>
+                <div class="log-output" id="logOutput">
+                    <div class="log-line" data-type="info"><span class="log-time">[10:15:23]</span> <span class="log-msg">Инициализация</span></div>
+                    <div class="log-line" data-type="success"><span class="log-time">[10:15:25]</span> <span class="log-success">Готова к работе</span></div>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="progress-section">
+                <div class="progress-label">
+                    <span>Прогресс</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <div class="start-section">
+                <button class="btn btn-primary btn-block" id="startBtn" style="height: 40px; font-weight: 600;">
+                    <i class="fas fa-play"></i> НАЧАТЬ ПАРСИНГ
+                </button>
+            </div>
+
+        </aside>
+
+    </div>
+
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// Simple interaction handlers
+document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+function switchTab(id) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+    document.getElementById(`tab-${id}`).classList.add('active');
+}
+
+// Password toggle
+document.getElementById('toggleHash').addEventListener('click', () => {
+    const inp = document.getElementById('apiHash');
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    document.querySelector('#toggleHash i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+});
+
+// Range slider
+document.getElementById('parallelSlider')?.addEventListener('input', function() {
+    document.getElementById('parallelValue').textContent = this.value;
+});
+
+// Toggle switches
+document.querySelectorAll('.toggle-switch').forEach(sw => {
+    sw.addEventListener('click', function() {
+        this.classList.toggle('active');
+    });
+});
+
+// Media buttons
+document.querySelectorAll('.media-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        this.classList.toggle('active');
+    });
+});
+
+// Chips
+document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+        this.classList.toggle('active');
+    });
+});
+
+// Auth methods
+document.querySelectorAll('.method-option').forEach(opt => {
+    opt.addEventListener('click', function() {
+        document.querySelectorAll('.method-option').forEach(o => o.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+
+// Chat selection
+document.querySelectorAll('.chat-item').forEach(item => {
+    item.addEventListener('click', function() {
+        document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('selected'));
+        this.classList.add('selected');
+    });
+});
+
+// Auth button
+document.getElementById('authBtn')?.addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Подключение...';
+    setTimeout(() => {
+        this.innerHTML = '<i class="fas fa-check"></i> Авторизовано';
+        document.querySelector('.nav-item[data-tab="auth"]').classList.add('done');
+        document.getElementById('statusText').textContent = 'Авторизован';
+        document.querySelector('.status-dot').classList.add('online');
+        document.getElementById('characterTip').textContent = 'Авторизация успешна! Перейдите к выбору чатов →';
+        switchTab('chats');
+    }, 2000);
+});
+
+// Start button
+document.getElementById('startBtn')?.addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ВЫПОЛНЯЕТСЯ...';
+    let progress = 0;
+    const iv = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 100) progress = 100;
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
+        if (progress >= 100) {
+            clearInterval(iv);
+            this.innerHTML = '<i class="fas fa-check"></i> ГОТОВО';
+            document.querySelector('.nav-item[data-tab="settings"]').classList.add('done');
+        }
+    }, 300);
+});
+
+// Log functions
+function addLog(msg, type = 'info') {
+    const log = document.getElementById('logOutput');
+    const time = new Date().toLocaleTimeString('ru-RU').slice(0, 8);
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    div.dataset.type = type;
+    const cls = type === 'success' ? 'log-success' : type === 'error' ? 'log-error' : type === 'warning' ? 'log-warning' : 'log-msg';
+    div.innerHTML = `<span class="log-time">[${time}]</span> <span class="${cls}">${msg}</span>`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+document.getElementById('clearLogBtn')?.addEventListener('click', () => {
+    document.getElementById('logOutput').innerHTML = '';
+});
+
+document.getElementById('copyLogBtn')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('logOutput').innerText);
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+</script>
+
+</body>
+</html>

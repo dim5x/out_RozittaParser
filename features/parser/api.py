@@ -98,6 +98,8 @@ _TASK_BATCH_SIZE = 20
 # Защищает от потери всего прогресса при падении — пишем каждые 200 сообщений,
 # а не только в конце всего чата.
 _DB_BATCH_SIZE = 200
+# Через сколько сообщений замерять время ответа сервера для адаптивной паузы
+_ADAPTIVE_BATCH_SIZE = 100
 # Подпапки для каждого типа медиа внутри MEDIA_FOLDER_NAME
 _MEDIA_SUBFOLDERS: dict[str, str] = {
     "photo":      "photos",
@@ -556,6 +558,7 @@ class ParserService:
         attempts = 0
         _pending: list[tuple[int, asyncio.Task]] = []
         _iter_msg_count = 0  # счётчик внутри этого топика (для [DIAG])
+        _batch_t_start = time.perf_counter()  # момент начала текущего батча
 
         while attempts <= _MAX_RETRIES:
             try:
@@ -575,26 +578,19 @@ class ParserService:
                     # Продолжаем с последнего известного ID при рестарте после FloodWait
                     max_id=_max_id_arg,
                     reverse=False,
-                    
                 ):
-                    # Замер времени начала обработки сообщения
-                    start_time = time.perf_counter()
-                    task_created = False
-
                     last_message_id = message.id
                     _iter_msg_count += 1
                     if _iter_msg_count == 1:
                         logger.debug("[DIAG] first message from iter: id=%d date=%s", message.id, message.date)
                         self._log(f"[DIAG] первое сообщение: id={message.id} date={message.date}")
+                        _batch_t_start = time.perf_counter()
 
                     # Вычисляем дату один раз
                     msg_date = ensure_aware_utc(message.date) if message.date else None
 
                     # Фильтр верхней даты (пропускаем слишком новые)
                     if upper_date and msg_date and msg_date > upper_date:
-                        elapsed = time.perf_counter() - start_time
-                        if elapsed < 0.1:
-                            await asyncio.sleep(0.05)
                         continue
 
                     # Фильтр нижней даты (iter_messages идёт от новых к старым)
@@ -609,24 +605,15 @@ class ParserService:
 
                     # Фильтр по пользователю
                     if params.user_ids and message.sender_id not in params.user_ids:
-                        elapsed = time.perf_counter() - start_time
-                        if elapsed < 0.1:
-                            await asyncio.sleep(0.05)
                         continue
 
                     # Инкрементальный режим: пропускаем уже скачанные
                     if not params.re_download and tracker.is_downloaded(message.id):
-                        elapsed = time.perf_counter() - start_time
-                        if elapsed < 0.1:
-                            await asyncio.sleep(0.05)
                         continue
 
                     # Фильтр выражений (simpleeval) — до создания задачи
                     if (params.filter_expression and _SIMPLEEVAL_OK
                             and not self._eval_filter(message, params.filter_expression)):
-                        elapsed = time.perf_counter() - start_time
-                        if elapsed < 0.1:
-                            await asyncio.sleep(0.05)
                         continue
 
                     # Запоминаем посты с комментариями (sync — читаем атрибуты до task)
@@ -645,7 +632,6 @@ class ParserService:
 
                     if needs_download:
                         # Медиа-сообщение: асинхронная задача (download + извлечение полей)
-                        task_created = True
                         task = asyncio.create_task(
                             self._process_message(
                                 message      = message,
@@ -675,19 +661,31 @@ class ParserService:
                                 self._progress_cb(min(pct, 90))
 
                         # Периодический flush в БД — каждые _DB_BATCH_SIZE сообщений.
-                        # Без этого при падении теряется весь прогресс парсинга:
-                        # batch копится в памяти и пишется только в самом конце.
                         if len(batch) >= _DB_BATCH_SIZE:
                             insert_fn(batch)
                             batch.clear()
-                            tracker.save()   # ← сохраняем downloaded.txt тоже
+                            tracker.save()
 
-                    # Адаптивная пауза, если сообщение было обработано очень быстро
-                    # и не создавало задачу на скачивание (чтобы не флудить Telegram)
-                    if not task_created:
-                        elapsed = time.perf_counter() - start_time
-                        if elapsed < 0.1:
-                            await asyncio.sleep(0.05)
+                    # ── Адаптивная пауза между батчами ───────────────────────
+                    # Пауза делается между батчами (каждые _ADAPTIVE_BATCH_SIZE сообщений),
+                    # а не между отдельными сообщениями. Это соответствует тому как работает
+                    # MTProto: 100 сообщений = 1 запрос getHistory. Пауза адаптируется под
+                    # скорость ответа сервера — не давим если сервер уже тормозит.
+                    # Источник: telethon_2026_report.md, раздел 4.1
+                    if _iter_msg_count % _ADAPTIVE_BATCH_SIZE == 0:
+                        elapsed = time.perf_counter() - _batch_t_start
+                        if elapsed < 0.5:
+                            wait = 0.3        # сервер отвечает быстро — небольшая пауза
+                        elif elapsed < 2.0:
+                            wait = 0.7        # умеренно
+                        else:
+                            wait = elapsed * 0.5  # сервер тормозит — не давим
+                        logger.debug(
+                            "parser: adaptive pause %.2fs (batch elapsed=%.2fs)",
+                            wait, elapsed,
+                        )
+                        await asyncio.sleep(wait)
+                        _batch_t_start = time.perf_counter()
 
                 # Flush оставшихся медиа-задач после завершения итератора
                 if _pending:

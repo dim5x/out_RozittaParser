@@ -12,9 +12,10 @@ groups, channels, forums with topics, and private conversations.
 ### ✨ Features
 
 - 📁 **Full backup** — messages from groups, channels, forums with topics
-- 🧠 **AI-Ready export** — Markdown with auto-chunking (300k words) 
+- 🧠 **AI-Ready export** — Markdown with adjustable chunk size (default 300k words) 
   for NotebookLM and other AI tools
 - 📝 **DOCX** — readable documents, split by day / month / post
+- 🌐 **HTML** — clean web‑ready export with message structure
 - 🎙️ **Speech-to-Text** — transcribe voice messages and video notes 
   via local Whisper (no cloud, no API key)
 - 🖼️ **Media archive** — photos, videos, files with folder structure
@@ -29,11 +30,13 @@ Export any chat to Markdown, upload to NotebookLM, ask questions.
 ```bash
 git clone https://github.com/Nynchezyabka/RozittaParser.git
 cd RozittaParser
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 python main.py
 ```
-
-Requires Python 3.10+. Works on Windows, Linux, macOS.
+Requires Python 3.10–3.13. Python 3.14 requires Microsoft C++ Build Tools (see issue #35).
 
 > ⚠️ For personal use only — chats you are a member of.
 > Never share your `.session` file with anyone.
@@ -42,7 +45,7 @@ Requires Python 3.10+. Works on Windows, Linux, macOS.
 
 
 
-# 🐸 Rozitta Parser (v4.0)
+# 🐸 Rozitta Parser (v1.5)
 
 [English](#-rozitta-parser) | Русский
 
@@ -60,15 +63,32 @@ Requires Python 3.10+. Works on Windows, Linux, macOS.
 
 ---
 
+🆕 Что нового в версии 4.0
+- ✅ Устранены проблемы со скоростью — загрузка чатов и тредов теперь работает быстро
+- ✅ HTML экспорт — чистая веб-страница с сообщениями (требует доработки отображения полей)
+- ✅ Настраиваемый AI-сплит — размер чанка для Markdown/JSON можно менять в настройках
+- ✅ Корректные имена файлов — экспорт топиков форума больше не перезаписывает файлы
+- ✅ STT починен — голосовые и кружочки распознаются локально
+- ⚠️ В процессе — сборка exe с opentele (библиотека пока не подгружается)
+- ⚠️ Требует тестирования на macOS — были сообщения о проблемах, ждём обратную связь
+
+---
+
 ## 🔍 Ищу соавтора
 
 Если вы опытный разработчик и вам интересен живой проект с душой —  
 буду рада помощи с:
 
-- Оптимизацией работы с Telegram API (медленная загрузка чатов и тредов)
-- Архитектурой asyncio + PySide6
-- Аудитом безопасности сессий Telethon
-- `database is locked` при конкурентном доступе
+- **Сборкой exe** — библиотека opentele не подхватывается PyInstaller
+
+- **Доработкой HTML экспорта** — корректное отображение всех полей сообщений
+
+- **Аудитом безопасности сессий Telethon**
+
+- **Тестированием на разных платформах** (macOS, Linux)
+
+- **Лайт-версией** — упрощённый интерфейс для неопытных пользователей
+
 
 👉 **[Открытые Issues](https://github.com/Nynchezyabka/RozittaParser/issues)** — 
 там задокументированы конкретные проблемы.
@@ -81,9 +101,9 @@ Pull Requests и критика приветствуются.
 
 - 📁 **Полный бэкап** — сообщения из личных чатов, групп, каналов, 
   форумов с топиками
-- 🧠 **AI-Ready Export** — Markdown + автоматический чанкинг по 300 000 слов 
-  для обхода лимитов NotebookLM
+- 🧠 **AI-Ready Export** — Markdown + автоматический чанкинг для обхода лимитов NotebookLM
 - 📝 **DOCX** — читаемые документы для печати или быстрого просмотра
+- 🌐 HTML — веб-версия чата (в разработке)
 - 🎙️ **Speech-to-Text** — расшифровка голосовых и кружочков через Whisper
 - 🖼️ **Медиаархив** — фото, видео, файлы с сохранением структуры папок
 - 🔒 **Локально** — сессии и данные только на вашем компьютере, 
@@ -119,7 +139,7 @@ pip install -r requirements.txt
 # Запустить
 python main.py
 ```
-
+>**Важно:** Python 3.10–3.13 рекомендуется. Для Python 3.14 нужны Microsoft C++ Build Tools.
 ---
 
 ## ⚠️ Безопасность
@@ -134,6 +154,31 @@ python main.py
 они содержат полный доступ к вашему аккаунту.
 
 ---
+### 🔑 О ключах API
+
+- **API ID и API Hash** — это идентификаторы вашего приложения (не вашего аккаунта). Они нужны Telegram, чтобы знать, какая программа подключается.
+- **Номер телефона** — это аккаунт, к которому вы подключаетесь. Ключи не привязаны к номеру: можно использовать ключи от одного аккаунта, а войти под другим.
+- **Если кто-то использует ваши ключи со своим номером**, он получит доступ к своему аккаунту. Блокировки API (временные ограничения на запросы) применяются к тому аккаунту, с которым происходит вход, а не к владельцу ключей.
+- В Rozitta Parser реализованы адаптивные паузы между запросами, чтобы минимизировать риск временных ограничений.
+  
+Таким образом, вы можете безопасно использовать ключи, полученные от любого своего аккаунта, для работы с другими своими аккаунтами. Если вы всё же сомневаетесь, всегда есть альтернативный способ входа через папку `tdata` — для него ключи не нужны.
+---
+
+## 📋 Планы на следующие версии
+
+- Доработка HTML экспорта (все поля сообщений)
+
+- Исправление opentele в сборке PyInstaller
+
+- Тестирование на macOS и Linux
+
+- Английская версия интерфейса
+
+- Лайт-версия для начинающих пользователей
+
+- Отображение списка активных участников
+
+- Интерактивная карта проекта (обновление зависимостей)
 
 ## 📬 Контакты
 

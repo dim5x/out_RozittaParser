@@ -9,6 +9,7 @@ config_modern.json
 
 # --- ПЕРСОНАЛЬНЫЕ ЛОГИ И ВЫВОД ---
 *.log
+*.tmp
 output/
 downloads/
 
@@ -24,7 +25,9 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 .env
+/ENV
 dist/
 build/
 *.spec

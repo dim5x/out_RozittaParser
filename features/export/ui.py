@@ -46,7 +46,7 @@ from PySide6.QtCore import QThread, Signal
 
 from core.database import DBManager
 from core.exceptions import DocxGenerationError, EmptyDataError
-from features.export.generator import DocxGenerator, JsonGenerator, MarkdownGenerator
+from features.export.generator import DocxGenerator, JsonGenerator, MarkdownGenerator, HtmlGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class ExportParams:
         topic_id:         Фильтр по топику форума (None = весь чат).
         user_id:          Фильтр по пользователю (None = все).
         include_comments: Включать ли комментарии.
-        output_dir:       Папка для сохранения DOCX.
+        output_dir:       Папка для сохранения.
         db_path:          Путь к SQLite-файлу с сообщениями.
     """
     chat_id:          int
@@ -87,6 +87,7 @@ class ExportParams:
     db_path:          str           = "output/telegram_archive.db"
     export_formats:   list          = None  # ["docx"] | ["json"] | ["docx","json","html","md"]
     ai_split:         bool          = False  # разбивать MD/JSON на чанки по 300k слов
+    ai_split_chunk_words: int = 300_000
 
     def __post_init__(self):
         if self.export_formats is None:
@@ -192,6 +193,7 @@ class ExportWorker(QThread):
                         ai_split         = p.ai_split,
                         period_label     = p.period_label,
                         log              = self._log,
+                        ai_split_chunk_words = p.ai_split_chunk_words,
                     )
                     all_files.extend(json_paths)
 
@@ -206,15 +208,26 @@ class ExportWorker(QThread):
                         include_comments = p.include_comments,
                         ai_split         = p.ai_split,
                         period_label     = p.period_label,
+                        ai_split_chunk_words = p.ai_split_chunk_words,
                         log              = self._log,
                     )
                     all_files.extend(md_paths)
 
-                # ── HTML — не реализован (EX-2 в roadmap) ─────────────────
-                for fmt in formats:
-                    if fmt == "html":
-                        self._log("⚠️  HTML экспорт пока не реализован (roadmap EX-2)")
-
+                # ── HTML ──────────────────────────────────────────────────
+                if "html" in formats:
+                    hgen = HtmlGenerator(db=db, output_dir=p.output_dir)
+                    html_paths = hgen.generate(
+                        chat_id              = p.chat_id,
+                        chat_title           = p.chat_title,
+                        topic_id             = p.topic_id,
+                        user_id              = p.user_id,
+                        include_comments     = p.include_comments,
+                        ai_split             = p.ai_split,
+                        period_label         = p.period_label,
+                        log                  = self._log,
+                    )
+                    all_files.extend(html_paths)
+    
             if self._is_running:
                 self._log(f"🎉 Готово! Создано файлов: {len(all_files)}")
                 for f in all_files:

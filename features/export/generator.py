@@ -1,10 +1,10 @@
 """
-features/export/generator.py — Генерация DOCX из сохранённых сообщений
+features/export/generator.py — Генерация DOCX / JSON / MD / HTML из архива Telegram
 
-Читает данные из DBManager и создаёт DOCX-файлы через python-docx.
+Читает данные из DBManager и создаёт файлы экспорта.
 Все XML-трюки (закладки, ссылки) делегированы в features/export/xml_magic.py.
 
-Поддерживаемые режимы (split_mode):
+Поддерживаемые режимы (split_mode) для DocxGenerator:
     "none"  — один файл со всеми сообщениями
     "day"   — по одному файлу на каждый день
     "month" — по одному файлу на каждый месяц
@@ -26,10 +26,17 @@ features/export/generator.py — Генерация DOCX из сохранённ
             period_label     = result.period_label,
             log              = self.log_message.emit,
         )
+
+ПРИМЕЧАНИЕ по merge_group_id:
+    DBManager.get_messages() должен возвращать колонки merge_group_id (индекс 15)
+    и merge_part_index (индекс 16). Если SELECT их не включает — добавьте в database.py:
+        SELECT ..., merge_group_id, merge_part_index FROM messages ...
+    До этого генераторы работают корректно: merge-поля читаются защищённо через len(row).
 """
 
 from __future__ import annotations
 
+import html as html_lib
 import json
 import logging
 import os
@@ -64,25 +71,82 @@ _SEPARATOR = "─" * 60
 # ==============================================================================
 # SELECT id, chat_id, message_id, topic_id, user_id, username,
 #        date, text, media_path, file_type, file_size,
-#        reply_to_msg_id, post_id, is_comment, linked_chat_id
+#        reply_to_msg_id, post_id, is_comment, linked_chat_id,
+#        merge_group_id, merge_part_index
 # FROM messages
 #
-# (нумерация с 0, соответствует core/database.py)
-_COL_ID            = 0
-_COL_CHAT_ID       = 1
-_COL_MESSAGE_ID    = 2
-_COL_TOPIC_ID      = 3
-_COL_USER_ID       = 4
-_COL_USERNAME      = 5
-_COL_DATE          = 6
-_COL_TEXT          = 7
-_COL_MEDIA_PATH    = 8
-_COL_FILE_TYPE     = 9
-_COL_FILE_SIZE     = 10
-_COL_REPLY_TO      = 11
-_COL_POST_ID       = 12
-_COL_IS_COMMENT    = 13
-_COL_LINKED_CHAT   = 14
+_COL_ID             = 0
+_COL_CHAT_ID        = 1
+_COL_MESSAGE_ID     = 2
+_COL_TOPIC_ID       = 3
+_COL_USER_ID        = 4
+_COL_USERNAME       = 5
+_COL_DATE           = 6
+_COL_TEXT           = 7
+_COL_MEDIA_PATH     = 8
+_COL_FILE_TYPE      = 9
+_COL_FILE_SIZE      = 10
+_COL_REPLY_TO       = 11
+_COL_POST_ID        = 12
+_COL_IS_COMMENT     = 13
+_COL_LINKED_CHAT    = 14
+_COL_MERGE_GROUP_ID = 15   # ← задача 5: merge groups
+_COL_MERGE_PART_IDX = 16   # ← задача 5: порядок части внутри группы
+
+
+# ==============================================================================
+# Вспомогательные функции (модульный уровень)
+# ==============================================================================
+
+def _word_count(text: Optional[str]) -> int:
+    """Быстрый подсчёт слов (split по пробелам)."""
+    return len(text.split()) if text else 0
+
+
+def _get_merge_group_id(row: tuple) -> Optional[int]:
+    """
+    Защищённое чтение merge_group_id.
+    Возвращает None если колонка отсутствует в SELECT.
+    """
+    return row[_COL_MERGE_GROUP_ID] if len(row) > _COL_MERGE_GROUP_ID else None
+
+
+def _group_by_merge(messages: List[tuple]) -> List[List[tuple]]:
+    """
+    Группирует последовательные сообщения с одинаковым merge_group_id
+    в единые блоки для отображения.
+
+    Одиночные сообщения (merge_group_id=None) образуют группы из одного элемента.
+    Сообщения с одинаковым merge_group_id подряд объединяются в одну группу.
+
+    Args:
+        messages: Строки из DBManager.get_messages().
+
+    Returns:
+        Список групп. Каждая группа — список из 1+ строк.
+    """
+    groups: List[List[tuple]] = []
+    i = 0
+    while i < len(messages):
+        merge_id = _get_merge_group_id(messages[i])
+        if merge_id is not None:
+            # Собираем все подряд идущие части с тем же merge_group_id
+            group = [messages[i]]
+            j = i + 1
+            while j < len(messages) and _get_merge_group_id(messages[j]) == merge_id:
+                group.append(messages[j])
+                j += 1
+            groups.append(group)
+            i = j
+        else:
+            groups.append([messages[i]])
+            i += 1
+    return groups
+
+
+def _topic_suffix(topic_id: Optional[int]) -> str:
+    """Возвращает строку '_topicN' или '' если topic_id is None."""
+    return f"_topic{topic_id}" if topic_id is not None else ""
 
 
 # ==============================================================================
@@ -102,13 +166,14 @@ class DocxGenerator:
     """
 
     def __init__(self, db: DBManager, output_dir: str = "output") -> None:
-        self._db         = db
-        self._output_dir = output_dir
+        self._db          = db
+        self._output_dir  = output_dir
         self._log: _LogCallback = logger.info
 
         # Текущий контекст (устанавливается в generate() для _build_path)
-        self._chat_title:  str = "chat"
-        self._period_label: str = "fullchat"
+        self._chat_title:   str           = "chat"
+        self._period_label: str           = "fullchat"
+        self._topic_id:     Optional[int] = None   # ← задача 1
         # Транскрипции: {message_id: text} — загружаются в generate()
         self._transcriptions: Dict[int, str] = {}
 
@@ -119,8 +184,8 @@ class DocxGenerator:
     def generate(
         self,
         chat_id:          int,
-        chat_title:       str        = "",
-        split_mode:       str        = "none",
+        chat_title:       str           = "",
+        split_mode:       str           = "none",
         topic_id:         Optional[int] = None,
         user_id:          Optional[int] = None,
         include_comments: bool          = False,
@@ -129,16 +194,6 @@ class DocxGenerator:
     ) -> List[str]:
         """
         Главный метод: генерирует DOCX в соответствии с split_mode.
-
-        Args:
-            chat_id:          Нормализованный ID чата (из CollectResult.chat_id).
-            chat_title:       Название чата (для имён файлов и заголовков).
-            split_mode:       "none" | "day" | "month" | "post".
-            topic_id:         Фильтр по топику форума (None = весь чат).
-            user_id:          Фильтр по пользователю (None = все).
-            include_comments: Включать ли комментарии (split_mode="post").
-            period_label:     Суффикс имени файла (из CollectResult.period_label).
-            log:              Колбэк для UI-логов.
 
         Returns:
             Список путей к созданным DOCX-файлам. Пустой список при ошибке.
@@ -157,6 +212,7 @@ class DocxGenerator:
         self._log          = log or logger.info
         self._chat_title   = chat_title or f"chat_{chat_id}"
         self._period_label = period_label
+        self._topic_id     = topic_id   # ← задача 1: сохраняем для _build_path
         os.makedirs(self._output_dir, exist_ok=True)
 
         # Загружаем все транскрипции чата одним запросом
@@ -220,24 +276,15 @@ class DocxGenerator:
         messages: List[tuple],
         chat_id:  int,
     ) -> List[str]:
-        """
-        Режим "none" — один файл со всеми сообщениями.
-
-        Args:
-            messages: Строки из DBManager.get_messages().
-            chat_id:  ID чата (для имени файла).
-
-        Returns:
-            Список из одного пути к файлу.
-        """
+        """Режим "none" — один файл со всеми сообщениями."""
         xml_magic.reset_counter()
         doc = Document()
 
         title = doc.add_heading(f"Архив чата: {self._chat_title}", level=1)
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-        for msg in messages:
-            self._add_message_to_doc(doc, msg)
+        for group in _group_by_merge(messages):       # ← задача 5
+            self._add_group_to_doc(doc, group)
 
         file_path = self._build_path("archive")
         self._save_doc(doc, file_path)
@@ -249,16 +296,7 @@ class DocxGenerator:
         messages: List[tuple],
         chat_id:  int,
     ) -> List[str]:
-        """
-        Режим "day" — по одному файлу на каждый день.
-
-        Args:
-            messages: Строки из DBManager.get_messages(), отсортированные по дате.
-            chat_id:  ID чата.
-
-        Returns:
-            Список путей к файлам (по одному на день).
-        """
+        """Режим "day" — по одному файлу на каждый день."""
         days: Dict[str, List[tuple]] = defaultdict(list)
         for msg in messages:
             day = msg[_COL_DATE][:10]   # "YYYY-MM-DD"
@@ -272,8 +310,8 @@ class DocxGenerator:
             title = doc.add_heading(f"Сообщения за {day}", level=1)
             title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-            for msg in day_msgs:
-                self._add_message_to_doc(doc, msg)
+            for group in _group_by_merge(day_msgs):   # ← задача 5
+                self._add_group_to_doc(doc, group)
 
             file_path = self._build_path(f"day_{day}")
             self._save_doc(doc, file_path)
@@ -288,16 +326,7 @@ class DocxGenerator:
         messages: List[tuple],
         chat_id:  int,
     ) -> List[str]:
-        """
-        Режим "month" — по одному файлу на каждый месяц.
-
-        Args:
-            messages: Строки из DBManager.get_messages().
-            chat_id:  ID чата.
-
-        Returns:
-            Список путей к файлам (по одному на месяц).
-        """
+        """Режим "month" — по одному файлу на каждый месяц."""
         months: Dict[str, List[tuple]] = defaultdict(list)
         for msg in messages:
             month = msg[_COL_DATE][:7]  # "YYYY-MM"
@@ -311,8 +340,8 @@ class DocxGenerator:
             title = doc.add_heading(f"Сообщения за {month}", level=1)
             title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-            for msg in month_msgs:
-                self._add_message_to_doc(doc, msg)
+            for group in _group_by_merge(month_msgs):  # ← задача 5
+                self._add_group_to_doc(doc, group)
 
             file_path = self._build_path(f"month_{month}")
             self._save_doc(doc, file_path)
@@ -329,25 +358,7 @@ class DocxGenerator:
         user_id:          Optional[int],
         include_comments: bool,
     ) -> List[str]:
-        """
-        Режим "post" — по одному файлу на каждый пост.
-
-        Если include_comments=True, каждый файл содержит пост + его комментарии.
-        Если include_comments=False, каждый файл содержит только один пост.
-
-        Args:
-            chat_id:          ID чата.
-            topic_id:         Фильтр по топику.
-            user_id:          Фильтр по пользователю.
-            include_comments: Включать ли комментарии.
-
-        Returns:
-            Список путей к файлам (по одному на пост).
-
-        Raises:
-            EmptyDataError: если постов нет.
-        """
-        # Получаем только посты (is_comment=0)
+        """Режим "post" — по одному файлу на каждый пост."""
         posts = self._db.get_messages(
             chat_id          = chat_id,
             topic_id         = topic_id,
@@ -375,7 +386,6 @@ class DocxGenerator:
             comments: list = []
             if include_comments:
                 all_rows = self._db.get_post_with_comments(chat_id, post_id)
-                # Фильтруем: только комментарии (не сам пост)
                 comments = [
                     r for r in all_rows
                     if not (r[_COL_MESSAGE_ID] == post_id and r[_COL_IS_COMMENT] == 0)
@@ -387,8 +397,8 @@ class DocxGenerator:
                     )
                     comment_header.paragraph_format.space_before = Pt(12)
 
-                    for comment in comments:
-                        self._add_message_to_doc(doc, comment, is_comment=True)
+                    for group in _group_by_merge(comments):   # ← задача 5
+                        self._add_group_to_doc(doc, group, is_comment=True)
 
             file_path = self._build_path(f"post_{post_id}")
             self._save_doc(doc, file_path)
@@ -401,7 +411,143 @@ class DocxGenerator:
         return files
 
     # ------------------------------------------------------------------
-    # Добавление сообщения в документ
+    # Группы сообщений (merge)  — задача 5
+    # ------------------------------------------------------------------
+
+    def _add_group_to_doc(
+        self,
+        doc:        Document,
+        group:      List[tuple],
+        is_post:    bool = False,
+        is_comment: bool = False,
+    ) -> None:
+        """
+        Добавляет группу сообщений в документ.
+
+        Если группа содержит одно сообщение — вызывает _add_message_to_doc.
+        Если несколько (merge group) — выводит единый заголовок и склеенный текст,
+        без повторяющихся разделителей между частями.
+        """
+        if len(group) == 1:
+            self._add_message_to_doc(doc, group[0], is_post=is_post, is_comment=is_comment)
+            return
+
+        first      = group[0]
+        msg_id     = first[_COL_MESSAGE_ID]
+        username   = first[_COL_USERNAME] or "Unknown"
+        date_str   = first[_COL_DATE] or ""
+        reply_to   = first[_COL_REPLY_TO]
+
+        # --- Закладка (якорь по первому сообщению группы) ---
+        anchor_p = doc.add_paragraph()
+        xml_magic.add_bookmark(anchor_p, f"msg_{msg_id}")
+        anchor_p.paragraph_format.space_before = Pt(0)
+        anchor_p.paragraph_format.space_after  = Pt(0)
+
+        # --- Единый заголовок ---
+        header_p = doc.add_paragraph()
+        if is_post:
+            header_text = f"📌 ПОСТ от {username}"
+            font_size   = Pt(12)
+            font_color  = RGBColor(0, 102, 204)
+        elif is_comment:
+            header_text = f"  💬 {username}"
+            font_size   = Pt(10)
+            font_color  = RGBColor(102, 102, 102)
+        else:
+            header_text = f"👤 {username}"
+            font_size   = Pt(11)
+            font_color  = RGBColor(51, 51, 51)
+
+        run = header_p.add_run(header_text)
+        run.bold           = True
+        run.font.size      = font_size
+        run.font.color.rgb = font_color
+
+        date_run = header_p.add_run(f"\n📅 {date_str}")
+        date_run.font.size      = Pt(9)
+        date_run.font.color.rgb = RGBColor(128, 128, 128)
+
+        if is_comment:
+            header_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+
+        # --- Ссылка-ответ (только у первой части) ---
+        if reply_to:
+            reply_p = doc.add_paragraph()
+            reply_p.add_run("↩️ В ответ на: ")
+            xml_magic.add_internal_hyperlink(reply_p, reply_to, f"сообщение #{reply_to}")
+            if is_comment:
+                reply_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+
+        # --- Текст и медиа каждой части (без заголовков и разделителей) ---
+        for part in group:
+            text       = (part[_COL_TEXT] or "").strip()
+            media_path = part[_COL_MEDIA_PATH]
+            part_id    = part[_COL_MESSAGE_ID]
+
+            if text:
+                text_p = doc.add_paragraph()
+                xml_magic.write_text_with_links(text_p, text)
+                if is_comment:
+                    text_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+
+            if media_path and os.path.exists(media_path):
+                abs_path = os.path.abspath(media_path)
+                media_p  = doc.add_paragraph("📎 Медиафайл: ")
+                file_uri = Path(abs_path).as_uri()
+                xml_magic.add_external_hyperlink(
+                    media_p, file_uri, os.path.basename(abs_path)
+                )
+                if is_comment:
+                    media_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+
+                if is_image_path(abs_path):
+                    try:
+                        img_p   = doc.add_paragraph()
+                        img_run = img_p.add_run()
+                        img_run.add_picture(abs_path, width=Inches(_IMAGE_WIDTH_INCHES))
+                        if is_comment:
+                            img_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+                    except Exception as exc:
+                        logger.warning(
+                            "export: cannot insert image %s: %s",
+                            os.path.basename(abs_path), exc,
+                        )
+
+            elif media_path:
+                media_p = doc.add_paragraph(
+                    f"📎 [медиафайл недоступен]: {os.path.basename(media_path)}"
+                )
+                if is_comment:
+                    media_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+
+            # STT для этой части
+            file_type = part[_COL_FILE_TYPE] or ""
+            if file_type in ("voice", "video_note") and part_id in self._transcriptions:
+                stt_text = self._transcriptions[part_id]
+                if stt_text:
+                    stt_p     = doc.add_paragraph()
+                    stt_label = stt_p.add_run("🎙 Распознанная речь: ")
+                    stt_label.bold           = True
+                    stt_label.font.size      = Pt(10)
+                    stt_label.font.color.rgb = RGBColor(80, 80, 80)
+                    stt_run                  = stt_p.add_run(stt_text)
+                    stt_run.font.size        = Pt(10)
+                    stt_run.font.color.rgb   = RGBColor(40, 40, 40)
+                    stt_run.italic           = True
+                    if is_comment:
+                        stt_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
+
+        # --- Единый разделитель в конце всей группы ---
+        if not is_comment:
+            sep_p = doc.add_paragraph(_SEPARATOR)
+            sep_p.paragraph_format.space_before = Pt(4)
+            sep_p.paragraph_format.space_after  = Pt(4)
+            for run in sep_p.runs:
+                run.font.color.rgb = RGBColor(200, 200, 200)
+
+    # ------------------------------------------------------------------
+    # Добавление одного сообщения в документ
     # ------------------------------------------------------------------
 
     def _add_message_to_doc(
@@ -422,12 +568,6 @@ class DocxGenerator:
             [📎 Медиафайл: ссылка]   (если есть медиа)
             [Изображение]            (если медиа — картинка)
             [──────────────]         (разделитель, не для комментариев)
-
-        Args:
-            doc:        Документ python-docx.
-            msg:        Строка из get_messages() / get_post_with_comments().
-            is_post:    True → оформлять как пост канала.
-            is_comment: True → добавлять отступы, другой цвет заголовка.
         """
         msg_id     = msg[_COL_MESSAGE_ID]
         username   = msg[_COL_USERNAME]  or "Unknown"
@@ -436,10 +576,9 @@ class DocxGenerator:
         media_path = msg[_COL_MEDIA_PATH]
         reply_to   = msg[_COL_REPLY_TO]
 
-        # --- Закладка (якорь для внутренних ссылок) ---
+        # --- Закладка ---
         anchor_p = doc.add_paragraph()
         xml_magic.add_bookmark(anchor_p, f"msg_{msg_id}")
-        # Убираем лишний отступ у параграфа-якоря
         anchor_p.paragraph_format.space_before = Pt(0)
         anchor_p.paragraph_format.space_after  = Pt(0)
 
@@ -463,9 +602,8 @@ class DocxGenerator:
         run.font.size        = font_size
         run.font.color.rgb   = font_color
 
-        # Дата
         date_run = header_p.add_run(f"\n📅 {date_str}")
-        date_run.font.size  = Pt(9)
+        date_run.font.size      = Pt(9)
         date_run.font.color.rgb = RGBColor(128, 128, 128)
 
         if is_comment:
@@ -489,12 +627,8 @@ class DocxGenerator:
                 text_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
 
         # --- Медиа ---
-        # Проверяем существование файла ДО os.path.abspath() —
-        # иначе add_external_hyperlink запишет битую ссылку в XML,
-        # что Word воспринимает как повреждение документа.
         if media_path and os.path.exists(media_path):
             abs_path = os.path.abspath(media_path)
-
             media_p  = doc.add_paragraph("📎 Медиафайл: ")
             file_uri = Path(abs_path).as_uri()
             xml_magic.add_external_hyperlink(
@@ -503,7 +637,6 @@ class DocxGenerator:
             if is_comment:
                 media_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
 
-            # Вставка изображения (только если это картинка)
             if is_image_path(abs_path):
                 try:
                     img_p   = doc.add_paragraph()
@@ -514,7 +647,7 @@ class DocxGenerator:
                 except Exception as exc:
                     logger.warning(
                         "export: cannot insert image %s: %s",
-                        os.path.basename(abs_path), exc
+                        os.path.basename(abs_path), exc,
                     )
                     self._log(
                         f"⚠️ Не удалось вставить изображение "
@@ -522,27 +655,26 @@ class DocxGenerator:
                     )
 
         elif media_path:
-            # Файл записан в БД, но недоступен на диске — только текст, без ссылки
             media_p = doc.add_paragraph(
                 f"📎 [медиафайл недоступен]: {os.path.basename(media_path)}"
             )
             if is_comment:
                 media_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
 
-        # --- Транскрипция голосового / видео-сообщения ---
+        # --- Транскрипция ---
         file_type = msg[_COL_FILE_TYPE] or ""
         if file_type in ("voice", "video_note") and msg_id in self._transcriptions:
             stt_text = self._transcriptions[msg_id]
             if stt_text:
-                stt_p = doc.add_paragraph()
+                stt_p     = doc.add_paragraph()
                 stt_label = stt_p.add_run("🎙 Распознанная речь: ")
-                stt_label.bold = True
-                stt_label.font.size = Pt(10)
+                stt_label.bold           = True
+                stt_label.font.size      = Pt(10)
                 stt_label.font.color.rgb = RGBColor(80, 80, 80)
-                stt_run = stt_p.add_run(stt_text)
-                stt_run.font.size = Pt(10)
-                stt_run.font.color.rgb = RGBColor(40, 40, 40)
-                stt_run.italic = True
+                stt_run                  = stt_p.add_run(stt_text)
+                stt_run.font.size        = Pt(10)
+                stt_run.font.color.rgb   = RGBColor(40, 40, 40)
+                stt_run.italic           = True
                 if is_comment:
                     stt_p.paragraph_format.left_indent = Inches(_COMMENT_INDENT_INCHES)
 
@@ -551,7 +683,6 @@ class DocxGenerator:
             sep_p = doc.add_paragraph(_SEPARATOR)
             sep_p.paragraph_format.space_before = Pt(4)
             sep_p.paragraph_format.space_after  = Pt(4)
-            # Серый цвет у разделителя
             for run in sep_p.runs:
                 run.font.color.rgb = RGBColor(200, 200, 200)
 
@@ -563,26 +694,24 @@ class DocxGenerator:
         """
         Строит полный путь к DOCX-файлу.
 
-        Формат имени:
-            <безопасное_имя_чата>_<kind>_<period_label>.docx
+        Формат имени (задача 1 — topic_id добавлен):
+            <chat>_topic{N}_<kind>_<period>.docx   (если topic_id задан)
+            <chat>_<kind>_<period>.docx             (если topic_id=None)
 
         Args:
-            kind: Тип файла (например, "archive", "day_2025-01-15", "post_42").
+            kind: Тип файла ("archive", "day_2025-01-15", "post_42" и т.д.).
 
         Returns:
             Абсолютный путь к файлу.
         """
         safe_title = sanitize_filename(self._chat_title)
-        filename   = f"{safe_title}_{kind}_{self._period_label}.docx"
+        topic_sfx  = _topic_suffix(self._topic_id)
+        filename   = f"{safe_title}{topic_sfx}_{kind}_{self._period_label}.docx"
         return os.path.join(self._output_dir, filename)
 
     def _save_doc(self, doc: Document, file_path: str) -> None:
         """
         Сохраняет документ на диск.
-
-        Args:
-            doc:       Объект python-docx Document.
-            file_path: Полный путь к файлу (включая .docx).
 
         Raises:
             DocxGenerationError: если не удалось записать файл.
@@ -603,36 +732,14 @@ class DocxGenerator:
 # JsonGenerator
 # ==============================================================================
 
-_AI_SPLIT_WORDS = 300_000   # порог слов для разбивки ИИ-чанков
-
-
-def _word_count(text: Optional[str]) -> int:
-    """Быстрый подсчёт слов (split по пробелам)."""
-    return len(text.split()) if text else 0
-
-
 class JsonGenerator:
     """
     Генерирует JSON-архив переписки из SQLite.
 
     Структура выходного файла — плоский список объектов, пригодный для
-    загрузки в NotebookLM / ChatGPT и простого чтения вручную:
+    загрузки в NotebookLM / ChatGPT и простого чтения вручную.
 
-        [
-          {
-            "message_id": 123,
-            "date":       "2025-03-16T10:30:00",
-            "sender_id":  456789,
-            "username":   "vasya",
-            "text":       "Привет!",
-            "media_path": null,
-            "stt_text":   null
-          },
-          ...
-        ]
-
-    При ai_split=True файл разбивается на части по ~300k слов
-    (telegram_history_part_1.json, _part_2.json, …).
+    При ai_split=True файл разбивается на части по ai_split_chunk_words слов.
 
     Нет Qt-зависимостей. Нет Telethon-зависимостей. Только stdlib + DBManager.
     """
@@ -643,21 +750,27 @@ class JsonGenerator:
 
     def generate(
         self,
-        chat_id:          int,
-        chat_title:       str,
+        chat_id:              int,
+        chat_title:           str,
         *,
-        topic_id:         Optional[int]  = None,
-        user_id:          Optional[int]  = None,
-        include_comments: bool           = False,
-        ai_split:         bool           = False,
-        log:              _LogCallback   = lambda _: None,
+        topic_id:             Optional[int]  = None,      # ← задача 2
+        user_id:              Optional[int]  = None,
+        include_comments:     bool           = False,
+        ai_split:             bool           = False,
+        period_label:         str            = "fullchat", # ← задача 3
+        ai_split_chunk_words: int            = 300_000,    # ← задача 4
+        log:                  _LogCallback   = lambda _: None,
     ) -> List[str]:
         """
         Основная точка входа. Строит JSON и сохраняет на диск.
 
+        Имя файла:
+            <chat>_topic{N}_{period}_history.json   (с topic_id)
+            <chat>_{period}_history.json            (без topic_id)
+            <chat>_topic{N}_{period}_history_part_{k}.json   (с ai_split)
+
         Returns:
-            Список абсолютных путей к созданным .json файлам
-            (один файл без ai_split, несколько с ai_split).
+            Список абсолютных путей к созданным .json файлам.
 
         Raises:
             EmptyDataError: нет сообщений для экспорта.
@@ -678,8 +791,10 @@ class JsonGenerator:
 
         log(f"📊 Строк получено: {len(rows)}")
 
-        stt_map: dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
+        stt_map:   dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
         safe_title = sanitize_filename(chat_title)
+        topic_sfx  = _topic_suffix(topic_id)           # ← задача 2
+        base_name  = f"{safe_title}{topic_sfx}_{period_label}_history"  # ← задача 3
 
         # ── Без разбивки: один файл ────────────────────────────────────
         if not ai_split:
@@ -687,11 +802,11 @@ class JsonGenerator:
             for row in rows:
                 msg_id = row[_COL_MESSAGE_ID]
                 records.append(self._make_record(row, stt_map.get(msg_id)))
-            out_path = os.path.join(self._output_dir, f"{safe_title}_telegram_history.json")
+            out_path = os.path.join(self._output_dir, f"{base_name}.json")
             self._write_json(out_path, records, log)
             return [out_path]
 
-        # ── С разбивкой по ~300k слов ──────────────────────────────────
+        # ── С разбивкой по ai_split_chunk_words слов ───────────────────
         out_paths: List[str] = []
         chunk:      List[dict] = []
         words      = 0
@@ -703,10 +818,10 @@ class JsonGenerator:
             chunk.append(record)
             words += _word_count(record.get("text")) + _word_count(record.get("stt_text"))
 
-            if words >= _AI_SPLIT_WORDS:
+            if words >= ai_split_chunk_words:               # ← задача 4
                 path = os.path.join(
                     self._output_dir,
-                    f"{safe_title}_telegram_history_part_{part}.json",
+                    f"{base_name}_part_{part}.json",
                 )
                 self._write_json(path, chunk, log)
                 out_paths.append(path)
@@ -717,7 +832,7 @@ class JsonGenerator:
         if chunk:   # последний (возможно неполный) чанк
             path = os.path.join(
                 self._output_dir,
-                f"{safe_title}_telegram_history_part_{part}.json",
+                f"{base_name}_part_{part}.json",
             )
             self._write_json(path, chunk, log)
             out_paths.append(path)
@@ -763,8 +878,7 @@ class MarkdownGenerator:
 
         ---
 
-    При ai_split=True файл разбивается на части по ~300k слов
-    (telegram_history_part_1.md, _part_2.md, …).
+    При ai_split=True файл разбивается на части по ai_split_chunk_words слов.
 
     Нет Qt-зависимостей. Нет Telethon-зависимостей. Только stdlib + DBManager.
     """
@@ -775,18 +889,23 @@ class MarkdownGenerator:
 
     def generate(
         self,
-        chat_id:          int,
-        chat_title:       str,
+        chat_id:              int,
+        chat_title:           str,
         *,
-        topic_id:         Optional[int]  = None,
-        user_id:          Optional[int]  = None,
-        include_comments: bool           = False,
-        ai_split:         bool           = False,
-        log:              _LogCallback   = lambda _: None,
-        period_label:     str,
+        topic_id:             Optional[int]  = None,      # ← задача 2
+        user_id:              Optional[int]  = None,
+        include_comments:     bool           = False,
+        ai_split:             bool           = False,
+        period_label:         str,
+        ai_split_chunk_words: int            = 300_000,    # ← задача 4
+        log:                  _LogCallback   = lambda _: None,
     ) -> List[str]:
         """
         Основная точка входа. Строит Markdown и сохраняет на диск.
+
+        Имя файла:
+            <chat>_topic{N}_{period}_history.md   (с topic_id)
+            <chat>_{period}_history.md            (без topic_id)
 
         Returns:
             Список абсолютных путей к созданным .md файлам.
@@ -810,8 +929,10 @@ class MarkdownGenerator:
 
         log(f"📊 Строк получено: {len(rows)}")
 
-        stt_map:   dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
-        safe_title = sanitize_filename(chat_title)
+        stt_map:    dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
+        safe_title  = sanitize_filename(chat_title)
+        topic_sfx   = _topic_suffix(topic_id)           # ← задача 2
+        base_name   = f"{safe_title}{topic_sfx}_{period_label}_history"
 
         header = f"# {chat_title}\n\n"
 
@@ -820,11 +941,11 @@ class MarkdownGenerator:
             lines: List[str] = [header]
             for row in rows:
                 lines.append(self._format_message(row, stt_map.get(row[_COL_MESSAGE_ID])))
-            out_path = os.path.join(self._output_dir, f"{safe_title}_telegram_history.md")
+            out_path = os.path.join(self._output_dir, f"{base_name}.md")
             self._write_md(out_path, lines, log)
             return [out_path]
 
-        # ── С разбивкой по ~300k слов ──────────────────────────────────
+        # ── С разбивкой по ai_split_chunk_words слов ───────────────────
         out_paths: List[str] = []
         chunk:     List[str] = [header]
         words      = 0
@@ -840,10 +961,10 @@ class MarkdownGenerator:
                 + _word_count(stt)
             )
 
-            if words >= _AI_SPLIT_WORDS:
+            if words >= ai_split_chunk_words:               # ← задача 4
                 path = os.path.join(
                     self._output_dir,
-                    f"{safe_title}_telegram_history_part_{part}.md",
+                    f"{base_name}_part_{part}.md",
                 )
                 self._write_md(path, chunk, log)
                 out_paths.append(path)
@@ -854,7 +975,7 @@ class MarkdownGenerator:
         if len(chunk) > 1:   # есть сообщения (не только header)
             path = os.path.join(
                 self._output_dir,
-                f"{safe_title}_telegram_history_part_{part}.md",
+                f"{base_name}_part_{part}.md",
             )
             self._write_md(path, chunk, log)
             out_paths.append(path)
@@ -867,10 +988,8 @@ class MarkdownGenerator:
     @staticmethod
     def _format_message(row, stt_text: Optional[str]) -> str:
         """Форматирует одно сообщение в Markdown-блок."""
-        # Дата: берём первые 16 символов ISO-строки → "YYYY-MM-DD HH:MM"
         raw_date = row[_COL_DATE] or ""
         date_str = raw_date[:16].replace("T", " ") if raw_date else "—"
-
         author   = row[_COL_USERNAME] or f"id:{row[_COL_USER_ID]}" or "Неизвестно"
         text     = (row[_COL_TEXT] or "").strip()
 
@@ -887,3 +1006,276 @@ class MarkdownGenerator:
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("".join(lines))
         logger.info("MarkdownGenerator: saved → %s", path)
+
+
+# ==============================================================================
+# HtmlGenerator  — задача 6
+# ==============================================================================
+
+_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<style>
+  *, *::before, *::after {{ box-sizing: border-box; }}
+  body {{
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0e1117;
+    color: #e2e8f0;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    line-height: 1.6;
+  }}
+  h1 {{
+    font-size: 1.4rem;
+    color: #FF9500;
+    border-bottom: 1px solid #2a2f3a;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }}
+  .msg {{
+    border-bottom: 1px solid #1e2430;
+    padding: 12px 0;
+  }}
+  .msg.comment {{
+    margin-left: 24px;
+    border-left: 2px solid #2a3040;
+    padding-left: 12px;
+  }}
+  .msg-header {{
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }}
+  .msg-author {{
+    font-weight: 600;
+    color: #FF9500;
+    font-size: 0.9rem;
+  }}
+  .msg-date {{
+    color: #607080;
+    font-size: 0.78rem;
+  }}
+  .msg-text {{
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.92rem;
+    color: #d0d8e8;
+  }}
+  .msg-media {{
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: #8090a0;
+  }}
+  .msg-media a {{
+    color: #60a0e0;
+    text-decoration: none;
+  }}
+  .msg-media a:hover {{ text-decoration: underline; }}
+  .msg-stt {{
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: #90a0b0;
+    font-style: italic;
+  }}
+  .part-nav {{
+    text-align: center;
+    padding: 16px 0;
+    color: #607080;
+    font-size: 0.82rem;
+  }}
+</style>
+</head>
+<body>
+<h1>{title}</h1>
+{body}
+</body>
+</html>
+"""
+
+_HTML_MSG = """\
+<div class="msg{comment_class}">
+  <div class="msg-header">
+    <span class="msg-author">{author}</span>
+    <span class="msg-date">{date}</span>
+  </div>
+{text_block}{media_block}{stt_block}</div>
+"""
+
+
+class HtmlGenerator:
+    """
+    Генерирует HTML-архив переписки из SQLite.
+
+    Структура выходного файла — тёмная тема, адаптивная вёрстка.
+    При ai_split=True файл разбивается на части по ai_split_chunk_words слов.
+
+    Нет Qt-зависимостей. Нет Telethon-зависимостей. Только stdlib + DBManager.
+    """
+
+    def __init__(self, db: DBManager, output_dir: str = "output") -> None:
+        self._db         = db
+        self._output_dir = output_dir
+
+    def generate(
+        self,
+        chat_id:              int,
+        chat_title:           str,
+        *,
+        topic_id:             Optional[int]  = None,
+        user_id:              Optional[int]  = None,
+        include_comments:     bool           = False,
+        ai_split:             bool           = False,
+        period_label:         str            = "fullchat",
+        ai_split_chunk_words: int            = 300_000,
+        log:                  _LogCallback   = lambda _: None,
+    ) -> List[str]:
+        """
+        Основная точка входа. Строит HTML и сохраняет на диск.
+
+        Имя файла:
+            <chat>_topic{N}_{period}_history.html   (с topic_id)
+            <chat>_{period}_history.html            (без topic_id)
+            <chat>_topic{N}_{period}_history_part_{k}.html  (с ai_split)
+
+        Returns:
+            Список абсолютных путей к созданным .html файлам.
+
+        Raises:
+            EmptyDataError: нет сообщений для экспорта.
+            OSError: ошибка записи файла.
+        """
+        os.makedirs(self._output_dir, exist_ok=True)
+
+        log("📋 Загружаю сообщения из БД для HTML-экспорта...")
+        rows = self._db.get_messages(
+            chat_id,
+            topic_id         = topic_id,
+            user_id          = user_id,
+            include_comments = include_comments,
+        )
+
+        if not rows:
+            raise EmptyDataError(f"Нет сообщений для чата {chat_id}")
+
+        log(f"📊 Строк получено: {len(rows)}")
+
+        stt_map:    dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
+        safe_title  = sanitize_filename(chat_title)
+        topic_sfx   = _topic_suffix(topic_id)
+        base_name   = f"{safe_title}{topic_sfx}_{period_label}_history"
+        h_title     = html_lib.escape(chat_title)
+
+        # ── Без разбивки: один файл ────────────────────────────────────
+        if not ai_split:
+            blocks: List[str] = []
+            for row in rows:
+                blocks.append(self._format_message(row, stt_map.get(row[_COL_MESSAGE_ID])))
+            out_path = os.path.join(self._output_dir, f"{base_name}.html")
+            self._write_html(out_path, h_title, blocks, log)
+            return [out_path]
+
+        # ── С разбивкой по ai_split_chunk_words слов ───────────────────
+        out_paths: List[str] = []
+        chunk:     List[str] = []
+        words      = 0
+        part       = 1
+        total      = len(rows)
+
+        for row in rows:
+            msg_id = row[_COL_MESSAGE_ID]
+            stt    = stt_map.get(msg_id)
+            block  = self._format_message(row, stt)
+            chunk.append(block)
+            words += _word_count(row[_COL_TEXT]) + _word_count(stt)
+
+            if words >= ai_split_chunk_words:
+                path = os.path.join(
+                    self._output_dir,
+                    f"{base_name}_part_{part}.html",
+                )
+                nav = f'<div class="part-nav">Часть {part} · {len(chunk)} сообщений</div>'
+                self._write_html(path, f"{h_title} — часть {part}", chunk + [nav], log)
+                out_paths.append(path)
+                chunk = []
+                words = 0
+                part += 1
+
+        if chunk:
+            path = os.path.join(
+                self._output_dir,
+                f"{base_name}_part_{part}.html",
+            )
+            nav = f'<div class="part-nav">Часть {part} · {len(chunk)} сообщений</div>'
+            self._write_html(path, f"{h_title} — часть {part}", chunk + [nav], log)
+            out_paths.append(path)
+
+        log(f"✅ HTML готов: {total} сообщений → {len(out_paths)} файл(ов)")
+        return out_paths
+
+    # ── Вспомогательные ───────────────────────────────────────────────
+
+    @staticmethod
+    def _format_message(row, stt_text: Optional[str]) -> str:
+        """Форматирует одно сообщение в HTML-блок."""
+        raw_date = row[_COL_DATE] or ""
+        date_str = raw_date[:16].replace("T", " ") if raw_date else "—"
+        author   = row[_COL_USERNAME] or f"id:{row[_COL_USER_ID]}" or "Неизвестно"
+        text     = (row[_COL_TEXT] or "").strip()
+        is_cmt   = bool(row[_COL_IS_COMMENT])
+
+        text_block  = ""
+        media_block = ""
+        stt_block   = ""
+
+        if text:
+            text_block = (
+                f'  <div class="msg-text">{html_lib.escape(text)}</div>\n'
+            )
+
+        media_path = row[_COL_MEDIA_PATH]
+        if media_path:
+            fname = os.path.basename(media_path)
+            if os.path.exists(media_path):
+                uri = Path(os.path.abspath(media_path)).as_uri()
+                media_block = (
+                    f'  <div class="msg-media">📎 '
+                    f'<a href="{uri}">{html_lib.escape(fname)}</a></div>\n'
+                )
+            else:
+                media_block = (
+                    f'  <div class="msg-media">📎 [недоступен] '
+                    f'{html_lib.escape(fname)}</div>\n'
+                )
+
+        if stt_text:
+            stt_block = (
+                f'  <div class="msg-stt">🎙 {html_lib.escape(stt_text.strip())}</div>\n'
+            )
+
+        return _HTML_MSG.format(
+            comment_class = " comment" if is_cmt else "",
+            author        = html_lib.escape(author),
+            date          = html_lib.escape(date_str),
+            text_block    = text_block,
+            media_block   = media_block,
+            stt_block     = stt_block,
+        )
+
+    def _write_html(
+        self,
+        path:  str,
+        title: str,
+        blocks: List[str],
+        log:   _LogCallback,
+    ) -> None:
+        log(f"💾 Записываю HTML: {os.path.basename(path)} ({len(blocks)} блоков)")
+        content = _HTML_TEMPLATE.format(title=title, body="".join(blocks))
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        logger.info("HtmlGenerator: saved → %s", path)

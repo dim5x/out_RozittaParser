@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💚 Ландшафтный беспредел — чат с переходами</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0e1117;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            padding: 32px 20px;
+            color: #e7edf5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            margin-bottom: 28px;
+            border-bottom: 1px solid #2a2f3f;
+            padding-bottom: 16px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #FFB347, #FF8C42);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .message {
+            background: #151e26;
+            border-radius: 18px;
+            margin-bottom: 16px;
+            border: 1px solid #232b36;
+            transition: background 0.1s;
+        }
+        .message:target {
+            background: #1f2e3a;
+            scroll-margin-top: 70px;
+        }
+        .msg-inner {
+            padding: 18px 20px;
+        }
+        .msg-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .author {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #FFA559;
+        }
+        .date {
+            font-size: 0.7rem;
+            color: #6f7e93;
+            font-family: monospace;
+        }
+        .reply-context {
+            font-size: 0.75rem;
+            background: #1e2a36;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .reply-context a {
+            color: #FFA559;
+            text-decoration: none;
+            border-bottom: 1px dotted #FFA559;
+        }
+        .msg-text {
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: #e2eaf5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .msg-media {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            background: #0e151e;
+            padding: 6px 12px;
+            border-radius: 14px;
+            display: inline-block;
+        }
+        .msg-media a {
+            color: #70b0ff;
+            text-decoration: none;
+        }
+        .inline-quote {
+            background: #0c131c;
+            border-left: 3px solid #FF9500;
+            padding: 6px 12px;
+            margin: 10px 0 6px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        .message-link {
+            font-size: 0.7rem;
+            margin-left: 8px;
+            color: #8f9bb3;
+        }
+        .scroll-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #FF9500;
+            color: #0e1117;
+            border: none;
+            border-radius: 40px;
+            padding: 8px 16px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            z-index: 100;
+        }
+        .scroll-top:hover {
+            opacity: 1;
+        }
+        @media (max-width: 680px) {
+            body {
+                padding: 20px 12px;
+            }
+            .msg-inner {
+                padding: 14px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>💚 Ландшафтный беспредел · диалог с переходами</h1>
+        <div style="font-size: 0.8rem; color: #8f9bb3; margin-top: 6px;">Каждое сообщение — отдельно, ответные содержат ссылку на исходное</div>
+    </div>
+
+    <!-- Сообщения идут по порядку, но с явными ссылками на те, на которые отвечают -->
+    <div class="message" id="msg1">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-02-26 16:57</span>
+                <span class="message-link">🔗 #1</span>
+            </div>
+            <div class="msg-text">Смысл таблицы в том, чтобы сейчас, пока мы не приступили ко всем чертежам, сразу прицениться, не слишком ли дорога та площадь покрытий, которую мы запланировали. Можно успеть что-то подкорректировать<br><br>Цены средние за эти услуги по Московской области<br><br><a href="https://docs.google.com/spreadsheets/d/1q1XRTU6eD44AXE3hdLobpAaztjSO-uDT/edit" target="_blank">Таблица с ценами</a></div>
+        </div>
+    </div>
+
+    <div class="message" id="msg2">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">elenaohapkina</span>
+                <span class="date">2026-02-26 18:27</span>
+                <span class="message-link">🔗 #2</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg1">в ответ на сообщение lexandra93 (16:57)</a></div>
+            <div class="msg-text">5000 за террасу это только доска или вместе с металлокаркасом?</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg3">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-02-26 18:57</span>
+                <span class="message-link">🔗 #3</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg2">в ответ на elenaohapkina (18:27)</a></div>
+            <div class="msg-text">Я взяла это из курса так что точно не знаю, но думаю что все вместе. Написано под ключ и она именно давала таблицу для той цели чтобы прикинуть весь объем</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg4">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-02-26 19:56</span>
+                <span class="message-link">🔗 #4</span>
+            </div>
+            <div class="msg-text">Теперь вопрос по растениям. У нас везде в принципе достаточно все прикрыто, но вот тут забор с соседями остался свободный<br><br>Варианты<br>• добавить небольшой кустик в наш ассортимент. Например спирею серую <br>• ограничиться закрытием забора цветником</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg5">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">elenaohapkina</span>
+                <span class="date">2026-02-27 05:17</span>
+                <span class="message-link">🔗 #5</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg4">в ответ на lexandra93 (19:56)</a></div>
+            <div class="msg-text">Я бы добавила, спирею серую люблю, но ее стричь придется, она 2м в диаметре, а тут всего полтора, или пусть прямо на площадку вылезает?</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg6">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">elenaohapkina</span>
+                <span class="date">2026-02-27 05:53</span>
+                <span class="message-link">🔗 #6</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg4">в ответ на lexandra93 (19:56)</a></div>
+            <div class="msg-text">Может парковка в брусчатке, огород купель брусчатка. А от террасы вглубь участка уже отсыпка с плитами пошаговыми, а кострище и барбекю просто отсыпка?<br>А то природный стиль и кострище на брусчатке бред получился.</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg7">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">nynchezyabka</span>
+                <span class="date">2026-02-27 06:04</span>
+                <span class="message-link">🔗 #7</span>
+            </div>
+            <div class="msg-text">Мы что-то гадаем с модульными посадками, а у неё уже всё готово)</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg8">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-02-27 13:32</span>
+                <span class="message-link">🔗 #8</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg7">в ответ на nynchezyabka (06:04)</a></div>
+            <div class="msg-text">Все, можно показывать клиентке<br>Живая изгородь может быть попушистее вот такая</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg9">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">nynchezyabka</span>
+                <span class="date">2026-02-27 14:27</span>
+                <span class="message-link">🔗 #9</span>
+            </div>
+            <div class="msg-text">Короче под лесной забор я предлагаю немного добавить что-то типа бруннеры, копытня и папоротника. Чисто для смены настроения</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg10">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-03-16 06:26</span>
+                <span class="message-link">🔗 #10</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg9">в ответ на nynchezyabka (14:27)</a></div>
+            <div class="msg-text">@nynchezyabka давай окончательно решим, делаем вот эти для тени тогда растения?<br><br>Бруннера + копытень для контраста листвы<br>+ Страусник на их фоне высокий более вертикальный</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg11">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">nynchezyabka</span>
+                <span class="date">2026-03-16 06:28</span>
+                <span class="message-link">🔗 #11</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg10">в ответ на lexandra93 (06:26)</a></div>
+            <div class="msg-text">я думаю, да, вполне себе нормально. Можно ещё туда из леса ткнуть веронику нитевидную при желании, она разрастается как зверь</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg12">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-03-07 10:58</span>
+                <span class="message-link">🔗 #12</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg1">в ответ на обсуждение бюджета</a></div>
+            <div class="msg-text">Короче теперь почему-то в 1.5 раза дороже вышло 😬<br><a href="https://docs.google.com/spreadsheets/d/1q1XRTU6eD44AXE3hdLobpAaztjSO-uDT/edit" target="_blank">Та же таблица</a>, пересчитала площади</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg13">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">elenaohapkina</span>
+                <span class="date">2026-03-19 14:13</span>
+                <span class="message-link">🔗 #13</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg1">в ответ на первоначальную таблицу</a></div>
+            <div class="msg-text">Она сказала, что это совсем неинформативная табличка, так как в ней нет стоимости каркаса и свай под террасную доску, стоимости бетона, стоимости пирога и стоимости работ. Так что по ней сказать устраивает ли её стоимость, она не может. Но планировка её устраивает и она будет все постепенно делать по мере накопления денег.</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg14">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">elenaohapkina</span>
+                <span class="date">2026-03-25 15:47</span>
+                <span class="message-link">🔗 #14</span>
+            </div>
+            <div class="msg-text">Не поняла, я ж скинула и в пдф и в пнг. Формат А3 альбомный</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg15">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">nynchezyabka</span>
+                <span class="date">2026-03-25 19:36</span>
+                <span class="message-link">🔗 #15</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg14">в ответ на elenaohapkina (15:47)</a></div>
+            <div class="msg-text">@elenaohapkina Пушок, а зачем эти рамки вообще нужны? может без них? ну можно их просто белым сделать если для выравнивания нужны. они перегружают по-моему лист</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg16">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">lexandra93</span>
+                <span class="date">2026-03-28 08:41</span>
+                <span class="message-link">🔗 #16</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg15">в ответ на nynchezyabka (19:36)</a></div>
+            <div class="msg-text">Да, мне кажется в презентации она лишняя(<br>Вместо такого красивого ровного слайдика вокруг рамку впендюривать еще и несимметричную((</div>
+        </div>
+    </div>
+
+    <div class="message" id="msg17">
+        <div class="msg-inner">
+            <div class="msg-header">
+                <span class="author">nynchezyabka</span>
+                <span class="date">2026-03-28 08:41</span>
+                <span class="message-link">🔗 #17</span>
+            </div>
+            <div class="reply-context">↩️ <a href="#msg16">в ответ на lexandra93 (08:41)</a></div>
+            <div class="msg-text">ладно, полагаемся на твой вкус) спорить из-за рамки - это что-то странное)</div>
+        </div>
+    </div>
+
+</div>
+
+<button class="scroll-top" id="scrollTopBtn">↑ наверх</button>
+
+<script>
+    // Плавная прокрутка к якорям
+    document.querySelectorAll('a[href^="#msg"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target.style.transition = 'background 0.3s';
+                target.style.background = '#2a3a44';
+                setTimeout(() => target.style.background = '', 800);
+            }
+        });
+    });
+    document.getElementById('scrollTopBtn')?.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+</script>
+</body>
+</html>

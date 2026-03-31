@@ -41,7 +41,7 @@ from PySide6.QtGui import QCloseEvent, QFont, QColor
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QSizePolicy, QProgressBar, QStackedWidget,
-    QFrame, QPushButton, QApplication,
+    QFrame, QPushButton, QApplication, QSpinBox,
     QScrollArea, QGridLayout,
 )
 
@@ -709,10 +709,37 @@ class SettingsPanel(QWidget):
 
         # ── AI-split toggle (только для MD и JSON) ──────────────────────
         self._toggle_ai_split = ToggleSwitch(checked=False)
-        ai_row = self._option_row("🤖  Адаптировать для ИИ (разбивать по 300к слов)", self._toggle_ai_split)
+        ai_row = self._option_row("🤖  Адаптировать для ИИ", self._toggle_ai_split)
         layout.addLayout(ai_row)
 
-        ai_hint = QLabel("Разбивка применяется только к MD и JSON. DOCX всегда единый файл.")
+        # Размер чанка — показывается только когда AI-split включён
+        chunk_row = QHBoxLayout()
+        chunk_row.setSpacing(6)
+        chunk_lbl = QLabel("Слов в одном файле:")
+        chunk_lbl.setStyleSheet(
+            f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;"
+        )
+        self._ai_chunk_spin = QSpinBox()
+        self._ai_chunk_spin.setRange(10_000, 2_000_000)
+        self._ai_chunk_spin.setSingleStep(50_000)
+        self._ai_chunk_spin.setValue(300_000)
+        self._ai_chunk_spin.setFixedWidth(110)
+        self._ai_chunk_spin.setFixedHeight(28)
+        self._ai_chunk_spin.setStyleSheet(QSS_INPUT)
+        self._ai_chunk_spin.setEnabled(False)   # заблокирован пока тоггл выкл
+        chunk_row.addSpacing(4)
+        chunk_row.addWidget(chunk_lbl)
+        chunk_row.addWidget(self._ai_chunk_spin)
+        chunk_row.addStretch()
+        self._ai_chunk_row_widget = QWidget()
+        self._ai_chunk_row_widget.setLayout(chunk_row)
+        self._ai_chunk_row_widget.setStyleSheet("background: transparent;")
+        layout.addWidget(self._ai_chunk_row_widget)
+
+        # Связываем тоггл и спинбокс
+        self._toggle_ai_split.toggled.connect(self._ai_chunk_spin.setEnabled)
+
+        ai_hint = QLabel("Разбивка применяется только к MD, JSON и HTML. DOCX всегда единый файл.")
         ai_hint.setStyleSheet(
             f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;"
         )
@@ -735,6 +762,10 @@ class SettingsPanel(QWidget):
     def get_ai_split(self) -> bool:
         """Возвращает состояние чекбокса 'Адаптировать для ИИ'."""
         return self._toggle_ai_split.isChecked()
+
+    def get_ai_split_chunk_words(self) -> int:
+        """Возвращает размер AI-чанка в словах."""
+        return self._ai_chunk_spin.value()
 
     def _build_options_section(self) -> ModernCard:
         card, layout = self._card()
@@ -1810,11 +1841,14 @@ class MainWindow(QMainWindow):
             chat_id=chat.get("id"),
             chat_title=chat_title,
             split_mode=split_mode,
+            topic_id=chat.get("selected_topic_id"),
             include_comments=params.include_comments if params else False,
             output_dir=chat_dir,
             db_path=db_path,
+            period_label=getattr(collect_result, "period_label", "fullchat"),
             export_formats=self._settings_screen.get_export_formats(),
             ai_split=self._settings_screen.get_ai_split(),
+            ai_split_chunk_words=self._settings_screen.get_ai_split_chunk_words(),
         )
 
         worker = ExportWorker(export_params)

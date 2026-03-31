@@ -128,6 +128,8 @@ class WhisperManager:
             return False
 
 
+    @classmethod
+    def instance(cls) -> "WhisperManager":
         """Возвращает единственный экземпляр менеджера."""
         if cls._instance is None:
             with cls._lock:

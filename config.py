@@ -7,23 +7,7 @@ config.py — Конфигурация Rozitta Parser (корень проект
 - Константы приложения (магические числа → именованные)
 - Датакласс AppConfig — полная конфигурация сессии
 - load_config() / save_config() — чтение/запись config_modern.json
-  (обратная совместимость: формат файла не изменился)
-
-Использование:
-
-    # Загрузка при старте (main.py):
-    from config import load_config, AppConfig
-    cfg = load_config()           # читает config_modern.json
-    print(cfg.api_id)             # "12345678"
-
-    # В features/auth/api.py:
-    from config import cfg        # синглтон, загруженный при старте
-    client = TelegramClient(cfg.session_name, int(cfg.api_id), cfg.api_hash)
-
-    # Сохранение после изменения в UI:
-    from config import save_config
-    cfg.days = 90
-    save_config(cfg)
+- setup_external_binaries() — настройка FFmpeg для сборки
 """
 
 from __future__ import annotations
@@ -31,13 +15,49 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, field, asdict
+import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
 from core.exceptions import ConfigError
 
 logger = logging.getLogger(__name__)
+
+
+# ==============================================================================
+# ФУНКЦИИ ДЛЯ РАБОТЫ С ПУТЯМИ В СБОРКЕ
+# ==============================================================================
+
+def get_app_root() -> Path:
+    """Возвращает абсолютный путь к корню приложения."""
+    if getattr(sys, 'frozen', False):
+        # Если запущен .exe (PyInstaller)
+        return Path(sys._MEIPASS)
+    # Если запущен через python main.py
+    return Path(__file__).parent.absolute()
+
+
+def setup_external_binaries():
+    """
+    Настраивает пути к сторонним утилитам (FFmpeg).
+    Добавляет их в PATH, чтобы библиотеки (Telethon, Whisper) их видели.
+    """
+    app_root = get_app_root()
+    ffmpeg_dir = app_root / "third-party-app" / "ffmpeg"
+    
+    if ffmpeg_dir.exists():
+        path_str = str(ffmpeg_dir)
+        if path_str not in os.environ["PATH"]:
+            # Добавляем в начало PATH, чтобы наш ffmpeg был приоритетным
+            os.environ["PATH"] = path_str + os.pathsep + os.environ["PATH"]
+            logger.info(f"FFmpeg найден и добавлен в PATH: {path_str}")
+    else:
+        logger.warning(f"FFmpeg не найден в {ffmpeg_dir}. Функции аудио могут не работать.")
+
+
+# Запускаем настройку путей сразу при импорте конфига
+setup_external_binaries()
 
 
 # ==============================================================================

@@ -990,6 +990,12 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._set_step(0)
 
+        from datetime import datetime
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("  ROZITTA PARSER — ЗАПУСК  %s", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        logger.info("=" * 70)
+        logger.info("")
         logger.info("MainWindow initialized (v4.0 redesign)")
 
     # ──────────────────────────────────────────────────────────────────────

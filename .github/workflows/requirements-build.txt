@@ -3,4 +3,3 @@ nuitka>=2.3
 ordered-set
 zstandard
 imageio
-

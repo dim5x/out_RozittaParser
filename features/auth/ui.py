@@ -538,10 +538,12 @@ class AuthScreen(QWidget):
             _refresh_proxy_ui(),
         ))
         self._mtproto_link_btn.clicked.connect(lambda: (
+            self._mtproto_manual_btn.setChecked(False),
             self._mtproto_link_btn.setChecked(True),
             _refresh_mtproto_mode(),
         ))
         self._mtproto_manual_btn.clicked.connect(lambda: (
+            self._mtproto_link_btn.setChecked(False),
             self._mtproto_manual_btn.setChecked(True),
             _refresh_mtproto_mode(),
         ))
@@ -897,15 +899,15 @@ class AuthScreen(QWidget):
         self.character_tip.emit("Ошибка импорта tdata")
         self.log_message.emit(f"❌ {error_msg}")
 
-        # Проверяем нужна ли установка opentele
-        if "opentele" in error_msg.lower() or "pip install" in error_msg:
+        # Проверяем нужна ли установка opentele2
+        if "opentele2" in error_msg.lower() or "pip install" in error_msg:
             self._show_install_dialog(
-                title   = "Требуется библиотека opentele",
+                title   = "Требуется библиотека opentele2",
                 text    = (
                     "Для импорта из Telegram Desktop нужна библиотека <b>opentele</b>.<br><br>"
                     "Установите её командой и перезапустите приложение:"
                 ),
-                command = "pip install opentele",
+                command = "pip install opentele2",
             )
         else:
             QMessageBox.warning(

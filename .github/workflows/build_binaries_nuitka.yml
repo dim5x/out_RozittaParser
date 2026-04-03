@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_to_release:
-        description: "Также загрузить в GitHub Release"
+        description: "Также загрузить в GitHub Release "
         type: boolean
         required: false
         default: false

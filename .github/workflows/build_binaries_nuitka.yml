@@ -66,7 +66,7 @@ jobs:
             slug: macos-intel-x64
             mode: app
             extra: >-
-              --macos-app-icon=assets/rozitta_idle_mac.icns
+              --macos-app-icon=assets/rozitta_idle_mac2.icns
               --macos-app-name=RozittaParser
             package_cmd: |
               set -euo pipefail
@@ -127,8 +127,9 @@ jobs:
           path: |
             ~/.cache/Nuitka
             ~/.cache/ccache
-            .nuitka
-          key: build-cache-${{ runner.os }}-${{ matrix.slug }}-${{ hashFiles('.github/workflows/requirements-build.txt') }}
+#            .nuitka
+#          key: build-cache-${{ runner.os }}-${{ matrix.slug }}-${{ hashFiles('.github/workflows/requirements-build.txt') }}
+          key: build-cache-${{ runner.os }}-${{ matrix.slug }}-${{ hashFiles('**/*.py', 'requirements.txt') }}
           restore-keys: |
             build-cache-${{ runner.os }}-${{ matrix.slug }}-
 
@@ -163,6 +164,15 @@ jobs:
           PYTHONHASHSEED: "0"
         run: |
           set -euo pipefail
+          # Определяем количество потоков (Linux/macOS)
+          JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+          echo "Using $JOBS parallel jobs"
+          # 🔧 Включаем ccache (иначе он вообще не используется)
+          export CC="ccache gcc"
+          export CXX="ccache g++"
+          ccache -M 500M
+          ccache -s
+          
           MODE="${{ matrix.mode }}"
           EXTRA="${{ matrix.extra }}"
           EXTRA=$(echo "$EXTRA" | tr '\n' ' ' | xargs)

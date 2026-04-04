@@ -1,0 +1,167 @@
+name: Build desktop binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_to_release:
+        description: "Также загрузить в GitHub Release"
+        type: boolean
+        required: false
+        default: false
+      release_tag:
+        description: "Тег релиза (например v1.2.3) для ручного запуска"
+        type: string
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+jobs:
+  build-binaries:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: RozittaParser-Windows-x64.exe
+            data_sep: ";"
+            pyinstaller_opts: "--onefile --windowed"
+            pyinstaller_icon: "assets/rozitta_idle.ico"
+            app_name: RozittaParser-Windows-x64
+            artifact_path: dist/RozittaParser-Windows-x64.exe
+
+          - os: ubuntu-latest
+            artifact_name: RozittaParser-Linux-x64.pkg
+            data_sep: ":"
+            pyinstaller_opts: "--onefile"
+            pyinstaller_icon: "assets/rozitta_idle.ico"
+            app_name: RozittaParser-Linux-x64
+            artifact_path: dist/RozittaParser-Linux-x64.pkg
+
+          # Apple Silicon (arm64)
+          - os: macos-latest
+            artifact_name: RozittaParser-macOS-arm64.zip
+            data_sep: ":"
+            pyinstaller_opts: "--onedir --windowed --argv-emulation --osx-bundle-identifier io.github.nynchezyabka.rozittaparser"
+            pyinstaller_icon: "assets/rozitta_idle_mac.icns"
+            app_name: RozittaParser-macOS-arm64
+            artifact_path: dist/RozittaParser-macOS-arm64.zip
+
+          # Intel (x86_64)
+          - os: macos-15-intel
+            artifact_name: RozittaParser-macOS-Intel-x64.zip
+            data_sep: ":"
+            pyinstaller_opts: "--onedir --windowed --argv-emulation --osx-bundle-identifier io.github.nynchezyabka.rozittaparser"
+            pyinstaller_icon: "assets/rozitta_idle_mac.icns"
+            app_name: RozittaParser-macOS-Intel-x64
+            artifact_path: dist/RozittaParser-macOS-Intel-x64.zip
+
+    #runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          # python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build binary with PyInstaller
+        shell: bash
+        run: |
+          ICON_ARG=""
+          if [[ -n "${{ matrix.pyinstaller_icon }}" ]]; then
+            ICON_ARG="--icon ${{ matrix.pyinstaller_icon }}"
+          fi
+          pyinstaller ${{ matrix.pyinstaller_opts }} \
+            --name "${{ matrix.app_name }}" \
+            $ICON_ARG \
+            --collect-submodules opentele2 \
+            --collect-data opentele2 \
+            --add-data "assets${{ matrix.data_sep }}assets" \
+            main.py
+
+      - name: Pack Linux binary as .pkg
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          mv "dist/${{ matrix.app_name }}" "dist/${{ matrix.app_name }}.pkg"
+
+      - name: Pack macOS app bundle
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run: |
+          # Finder чувствителен к подписи app bundle и вложенных dylib/frameworks.
+          # Делаем ad-hoc подпись после сборки и проверяем валидность.
+          codesign --force --deep --sign - "dist/${{ matrix.app_name }}.app"
+          codesign --verify --deep --strict --verbose=2 "dist/${{ matrix.app_name }}.app"
+          spctl --assess --type execute --verbose=2 "dist/${{ matrix.app_name }}.app" || true
+          
+          ditto -c -k --sequesterRsrc --keepParent "dist/${{ matrix.app_name }}.app" "dist/${{ matrix.app_name }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish artifacts to GitHub Release
+    needs: build-binaries
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_release == 'true' && github.event.inputs.release_tag != '')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RozittaParser-Windows-x64.exe
+          path: release-assets/windows
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RozittaParser-Linux-x64.pkg
+          path: release-assets/linux
+
+      - name: Download macOS arm64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RozittaParser-macOS-arm64.zip
+          path: release-assets/macos-arm64
+
+      - name: Download macOS intel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RozittaParser-macOS-Intel-x64.zip
+          path: release-assets/macos-intel
+
+      - name: Upload assets to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.event.inputs.release_tag }}
+          files: |
+            release-assets/windows/RozittaParser-Windows-x64.exe
+            release-assets/linux/RozittaParser-Linux-x64.pkg
+            release-assets/macos-arm64/RozittaParser-macOS-arm64.zip
+            release-assets/macos-intel/RozittaParser-macOS-Intel-x64.zip
+          fail_on_unmatched_files: true

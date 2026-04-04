@@ -52,7 +52,7 @@ jobs:
             artifact_name: RozittaParser-macOS-arm64.zip
             data_sep: ":"
             pyinstaller_opts: "--onedir --windowed --argv-emulation --osx-bundle-identifier io.github.nynchezyabka.rozittaparser"
-            pyinstaller_icon: "assets/rozitta_idle_mac_2.icns"
+            pyinstaller_icon: "assets/rozitta_idle_mac.icns"
             app_name: RozittaParser-macOS-arm64
             artifact_path: dist/RozittaParser-macOS-arm64.zip
 

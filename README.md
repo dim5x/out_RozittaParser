@@ -1,6 +1,6 @@
 # 🐸 Rozitta Parser 
 ## 🗺️ [Интерактивная карта проекта (с заделом на две будущих версии интерфейса)](https://nynchezyabka.github.io/RozittaParser/map.html)
-[viki](https://deepwiki.com/Nynchezyabka/RozittaParser/3.3-parser-module)
+[viki](https://deepwiki.com/Nynchezyabka/RozittaParser)
 
 [English](#rozitta-parser) | [🇷🇺 Русский](#rozitta-parser-v15)
 

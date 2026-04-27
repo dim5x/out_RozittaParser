@@ -155,6 +155,9 @@ xattr -cr RozittaParser-macOS-Intel-x64.app
 буду рада помощи с любыми задачами из [Issues](https://github.com/Nynchezyabka/RozittaParser/issues).  
 Pull Requests и критика приветствуются.
 
+- **Для контрибьюторов:** [CONTRIBUTING.md](CONTRIBUTING.md) – как помочь, собирать, тестировать.
+- **Архитектура и план баг-фикса:** [ARCHITECTURE.md](ARCHITECTURE.md) – схема модулей, три критических бага, контракты.
+
 ---
 
 ## ⚠️ Важно

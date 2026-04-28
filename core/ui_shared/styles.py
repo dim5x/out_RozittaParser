@@ -556,7 +556,6 @@ QSS_FILTER_BUTTON = f"""
         padding: 3px 3px;
         color: {TEXT_SECONDARY};
         font-size: {FONT_SIZE_XS}px;
-        min-width: 36px;
     }}
     QPushButton:hover {{
         color: {TEXT_PRIMARY};

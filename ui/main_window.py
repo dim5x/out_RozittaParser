@@ -547,12 +547,13 @@ class SettingsPanel(QWidget):
                     color: {TEXT_SECONDARY};
                     font-size: 12px;
                     padding: 0 12px;
+                    min-width: min-content;
                 }}
                 QPushButton:checked {{
                     background-color: {ACCENT_SOFT_ORANGE};
                     border-color: {ACCENT_ORANGE};
                     color: {ACCENT_ORANGE};
-                    font-weight: 600;
+                    font-weight: 300;
                 }}
                 QPushButton:hover:!checked {{
                     background-color: {OVERLAY_HEX};

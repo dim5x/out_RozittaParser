@@ -29,6 +29,7 @@ FloodWait стратегия:
 from __future__ import annotations
 
 import asyncio
+import glob
 import logging
 import os
 import time
@@ -46,6 +47,7 @@ from telethon.tl.types import (
     Channel,
     Chat,
     DocumentAttributeAudio,
+    DocumentAttributeFilename,
     DocumentAttributeVideo,
     Message,
     MessageMediaDocument,
@@ -108,6 +110,22 @@ _MEDIA_SUBFOLDERS: dict[str, str] = {
     "video_note": "video_notes",
     "file":       "files",
 }
+
+
+def _cleanup_partial(target_path: str) -> None:
+    """
+    Удаляет все файлы вида target_path.* (частично скачанные Telethon'ом).
+
+    Telethon не использует временный .part-суффикс: он пишет сразу в файл
+    с финальным расширением (.mp4, .jpg, ...). Поэтому «частичный» файл
+    отличается от полного только размером, а не именем.
+    """
+    for fpath in glob.glob(target_path + ".*"):
+        try:
+            os.remove(fpath)
+            logger.debug("[cleanup_partial] удалён: %s", fpath)
+        except OSError as _e:
+            logger.debug("[cleanup_partial] не удалось удалить %s: %s", fpath, _e)
 
 
 # ==============================================================================
@@ -776,11 +794,12 @@ class ParserService:
         try:
             results = await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True),
-                timeout=300.0,
+                timeout=3600.0,  # 1 час — страховка от полного зависания;
+                                 # 300s было слишком мало для нескольких 1GB файлов
             )
         except asyncio.TimeoutError:
             logger.error(
-                "[DIAG] _flush_tasks TIMEOUT: %d задач зависли, принудительно пропускаем",
+                "[DIAG] _flush_tasks TIMEOUT (1ч): %d задач зависли, принудительно пропускаем",
                 len(tasks),
             )
             results = [TimeoutError(f"download_media timeout (batch of {len(tasks)})")] * len(tasks)
@@ -865,7 +884,15 @@ class ParserService:
             media_dir  = self._build_media_dir(media_type)   # подпапка по типу
             os.makedirs(media_dir, exist_ok=True)
 
-            filename = f"{chat_id}_{message.id}_{int(message.date.timestamp())}"
+            original_name = self._get_original_filename(message)
+            if original_name:
+                # Оригинальное имя есть — используем его с префиксом msg_id
+                # чтобы избежать коллизий при одинаковых именах в чате
+                filename = f"{message.id}_{original_name}"
+            else:
+                # Фото и файлы без имени — timestamp как раньше (без chat_id:
+                # файлы лежат в папке чата, он избыточен)
+                filename = f"{message.id}_{int(message.date.timestamp())}"
             target   = os.path.join(media_dir, filename)
 
             try:
@@ -938,25 +965,65 @@ class ParserService:
         Raises:
             OSError | RPCError: после _MAX_RETRIES неудачных попыток.
         """
-        # Семафор ограничивает число параллельных сетевых скачиваний
+        # Ожидаемый размер файла — только для документов (не для фото)
+        expected_size: Optional[int] = None
+        if isinstance(message.media, MessageMediaDocument):
+            expected_size = getattr(message.media.document, "size", None)
+
+        # Если полный файл уже лежит на диске — возвращаем без повторной загрузки.
+        # (target_path без расширения; Telethon добавит .mp4/.jpg/... сам)
+        if expected_size:
+            for _existing in glob.glob(target_path + ".*"):
+                if os.path.getsize(_existing) >= expected_size:
+                    logger.debug(
+                        "[DIAG] download_media: файл уже полный, пропускаем: %s", _existing
+                    )
+                    return _existing
+
+        # Удаляем любые оставшиеся частичные файлы перед стартом
+        _cleanup_partial(target_path)
+
         logger.debug(
-            "[DIAG] download_media start: msg_id=%s media=%s path=%s",
-            message.id, type(message.media).__name__, target_path,
+            "[DIAG] download_media start: msg_id=%s media=%s path=%s expected_size=%s",
+            message.id, type(message.media).__name__, target_path, expected_size,
         )
+
+        downloaded_path: Optional[str] = None
         async with self._sem:
             try:
-                result = await asyncio.wait_for(
+                downloaded_path = await asyncio.wait_for(
                     message.download_media(file=target_path),
                     timeout=1200.0,
                 )
             except asyncio.TimeoutError:
-                logger.warning(
-                    "[DIAG] download_media timeout: msg_id=%s media=%s, пропускаем",
-                    message.id, type(message.media).__name__,
+                # Удаляем partial file и бросаем OSError →
+                # @async_retry перехватит и сделает повторную попытку.
+                _cleanup_partial(target_path)
+                raise OSError(
+                    f"download_media timeout (20 мин) msg_id={message.id} — "
+                    f"частичный файл удалён, будет повторная попытка"
                 )
-                return None
-        logger.debug("[DIAG] download_media done: msg_id=%s → %s", message.id, result)
-        return result
+            except asyncio.CancelledError:
+                # Задача отменена batch-таймаутом из _flush_tasks.
+                # Чистим файл, но НЕ ретраим (CancelledError пробрасываем).
+                _cleanup_partial(target_path)
+                raise
+
+        # Проверка целостности: реальный размер должен совпадать с document.size
+        if downloaded_path and os.path.exists(downloaded_path) and expected_size:
+            actual_size = os.path.getsize(downloaded_path)
+            if actual_size < expected_size:
+                os.remove(downloaded_path)
+                raise OSError(
+                    f"Неполный файл msg_id={message.id}: "
+                    f"{actual_size}/{expected_size} байт — удалён, будет повторная попытка"
+                )
+
+        logger.debug(
+            "[DIAG] download_media done: msg_id=%s → %s", message.id, downloaded_path
+        )
+        return downloaded_path
+
 
     # ------------------------------------------------------------------
     # 4. Комментарии к посту
@@ -1272,6 +1339,25 @@ class ParserService:
         if media_type and media_type in _MEDIA_SUBFOLDERS:
             return os.path.join(base, _MEDIA_SUBFOLDERS[media_type])
         return base
+
+    @staticmethod
+    def _get_original_filename(message: Message) -> Optional[str]:
+        """
+        Возвращает оригинальное имя файла из DocumentAttributeFilename.
+
+        Присутствует только у документов (видео, файлы, голосовые загруженные
+        как файл). У фото и стандартных голосовых (.ogg) атрибута нет — вернёт None.
+
+        Имя очищается через sanitize_filename() для безопасного использования
+        в пути файловой системы.
+        """
+        if not isinstance(message.media, MessageMediaDocument):
+            return None
+        doc = message.media.document
+        for attr in doc.attributes:
+            if isinstance(attr, DocumentAttributeFilename) and attr.file_name:
+                return sanitize_filename(attr.file_name)
+        return None
 
     @staticmethod
     def _classify_chat_type(entity: object) -> str:

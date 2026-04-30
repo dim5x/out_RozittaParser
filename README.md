@@ -1,6 +1,6 @@
 # 🐸 Rozitta Parser 
 
-[![Telegram](https://img.shields.io/badge/Telegram-Вступить_в_группу-2CA5E0?style=for-the-badge&logo=telegram)](https://t.me/PHPChatCo)
+[![Telegram](https://img.shields.io/badge/Telegram-Вступить_в_группу-2CA5E0?style=for-the-badge&logo=telegram)](https://t.me/rozittaparser)
 
 ## 🗺️ [Интерактивная карта проекта (с заделом на две будущих версии интерфейса)](https://nynchezyabka.github.io/RozittaParser/map.html)
 [viki](https://deepwiki.com/Nynchezyabka/RozittaParser)
@@ -160,7 +160,7 @@ Pull Requests и критика приветствуются.
 
 - **Для контрибьюторов:** [CONTRIBUTING.md](CONTRIBUTING.md) – как помочь, собирать, тестировать.
 - **Архитектура и план баг-фикса:** [ARCHITECTURE.md](ARCHITECTURE.md) – схема модулей, три критических бага, контракты.
-- **Группа в Telegram** [![Telegram](https://img.shields.io/badge/Telegram-Вступить_в_группу-2CA5E0?style=for-the-badge&logo=telegram)](https://t.me/PHPChatCo)
+- **Группа в Telegram** [![Telegram](https://img.shields.io/badge/Telegram-Вступить_в_группу-2CA5E0?style=for-the-badge&logo=telegram)](https://t.me/rozittaparser)
 
 ---
 

@@ -750,7 +750,7 @@ class DBManager:
             Список sqlite3.Row (id, message_id, media_path, file_type).
         """
         if file_types is None:
-            file_types = ["voice", "video_note"]
+            file_types = ["voice", "video_note", "videomessage"]
         placeholders = ",".join("?" * len(file_types))
         sql = f"""
             SELECT m.id, m.message_id, m.media_path, m.file_type

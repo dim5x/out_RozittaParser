@@ -191,6 +191,8 @@ class DocxGenerator:
         user_id:          Optional[int] = None,
         include_comments: bool          = False,
         period_label:     str           = "fullchat",
+        date_from:        Optional[str] = None,
+        date_to:          Optional[str] = None,
         log:              _LogCallback  = None,
     ) -> List[str]:
         """
@@ -237,6 +239,8 @@ class DocxGenerator:
                     topic_id         = topic_id,
                     user_id          = user_id,
                     include_comments = include_comments,
+                    date_from        = date_from,
+                    date_to          = date_to,
                 )
             else:
                 messages = self._db.get_messages(
@@ -244,6 +248,8 @@ class DocxGenerator:
                     topic_id         = topic_id,
                     user_id          = user_id,
                     include_comments = include_comments,
+                    date_from        = date_from,
+                    date_to          = date_to,
                 )
                 if not messages:
                     raise EmptyDataError(chat_id, topic_id)
@@ -358,6 +364,8 @@ class DocxGenerator:
         topic_id:         Optional[int],
         user_id:          Optional[int],
         include_comments: bool,
+        date_from:        Optional[str] = None,
+        date_to:          Optional[str] = None,
     ) -> List[str]:
         """Режим "post" — по одному файлу на каждый пост."""
         posts = self._db.get_messages(
@@ -365,6 +373,8 @@ class DocxGenerator:
             topic_id         = topic_id,
             user_id          = user_id,
             include_comments = False,
+            date_from        = date_from,
+            date_to          = date_to,
         )
         if not posts:
             raise EmptyDataError(chat_id, topic_id)
@@ -760,6 +770,8 @@ class JsonGenerator:
         ai_split:             bool           = False,
         period_label:         str            = "fullchat", # ← задача 3
         ai_split_chunk_words: int            = 300_000,    # ← задача 4
+        date_from:            Optional[str]  = None,
+        date_to:              Optional[str]  = None,
         log:                  _LogCallback   = lambda _: None,
     ) -> List[str]:
         """
@@ -785,6 +797,8 @@ class JsonGenerator:
             topic_id         = topic_id,
             user_id          = user_id,
             include_comments = include_comments,
+            date_from        = date_from,
+            date_to          = date_to,
         )
 
         if not rows:
@@ -899,6 +913,8 @@ class MarkdownGenerator:
         ai_split:             bool           = False,
         period_label:         str,
         ai_split_chunk_words: int            = 300_000,    # ← задача 4
+        date_from:            Optional[str]  = None,
+        date_to:              Optional[str]  = None,
         log:                  _LogCallback   = lambda _: None,
     ) -> List[str]:
         """
@@ -923,6 +939,8 @@ class MarkdownGenerator:
             topic_id         = topic_id,
             user_id          = user_id,
             include_comments = include_comments,
+            date_from        = date_from,
+            date_to          = date_to,
         )
 
         if not rows:
@@ -1174,6 +1192,8 @@ class HtmlGenerator:
         ai_split:             bool           = False,
         period_label:         str            = "fullchat",
         ai_split_chunk_words: int            = 300_000,
+        date_from:            Optional[str]  = None,
+        date_to:              Optional[str]  = None,
         log:                  _LogCallback   = lambda _: None,
     ) -> List[str]:
         """
@@ -1199,6 +1219,8 @@ class HtmlGenerator:
             topic_id         = topic_id,
             user_id          = user_id,
             include_comments = include_comments,
+            date_from        = date_from,
+            date_to          = date_to,
         )
 
         if not rows:

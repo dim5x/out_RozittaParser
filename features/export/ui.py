@@ -88,6 +88,8 @@ class ExportParams:
     export_formats:   list          = None  # ["docx"] | ["json"] | ["docx","json","html","md"]
     ai_split:         bool          = False  # разбивать MD/JSON на чанки по 300k слов
     ai_split_chunk_words: int = 300_000
+    date_from:            Optional[str] = None   # "YYYY-MM-DD"
+    date_to:              Optional[str] = None   # "YYYY-MM-DD" (включительно)
 
     def __post_init__(self):
         if self.export_formats is None:
@@ -177,6 +179,8 @@ class ExportWorker(QThread):
                         user_id          = p.user_id,
                         include_comments = p.include_comments,
                         period_label     = p.period_label,
+                        date_from        = p.date_from,
+                        date_to          = p.date_to,
                         log              = self._log,
                     )
                     all_files.extend(files)
@@ -192,8 +196,10 @@ class ExportWorker(QThread):
                         include_comments = p.include_comments,
                         ai_split         = p.ai_split,
                         period_label     = p.period_label,
-                        log              = self._log,
                         ai_split_chunk_words = p.ai_split_chunk_words,
+                        date_from        = p.date_from,
+                        date_to          = p.date_to,
+                        log              = self._log,
                     )
                     all_files.extend(json_paths)
 
@@ -209,6 +215,8 @@ class ExportWorker(QThread):
                         ai_split         = p.ai_split,
                         period_label     = p.period_label,
                         ai_split_chunk_words = p.ai_split_chunk_words,
+                        date_from        = p.date_from,
+                        date_to          = p.date_to,
                         log              = self._log,
                     )
                     all_files.extend(md_paths)
@@ -224,6 +232,8 @@ class ExportWorker(QThread):
                         include_comments     = p.include_comments,
                         ai_split             = p.ai_split,
                         period_label         = p.period_label,
+                        date_from        = p.date_from,
+                        date_to          = p.date_to,
                         log                  = self._log,
                     )
                     all_files.extend(html_paths)

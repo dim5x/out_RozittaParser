@@ -524,7 +524,7 @@ class DocxGenerator:
 
             # STT для этой части
             file_type = part[_COL_FILE_TYPE] or ""
-            if file_type in ("voice", "video_note") and part_id in self._transcriptions:
+            if file_type in ("voice", "video_note", "videomessage") and part_id in self._transcriptions:
                 stt_text = self._transcriptions[part_id]
                 if stt_text:
                     stt_p     = doc.add_paragraph()
@@ -664,7 +664,7 @@ class DocxGenerator:
 
         # --- Транскрипция ---
         file_type = msg[_COL_FILE_TYPE] or ""
-        if file_type in ("voice", "video_note") and msg_id in self._transcriptions:
+        if file_type in ("voice", "video_note", 'videomessage') and msg_id in self._transcriptions:
             stt_text = self._transcriptions[msg_id]
             if stt_text:
                 stt_p     = doc.add_paragraph()

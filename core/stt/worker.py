@@ -46,7 +46,7 @@ class STTWorker(QThread):
     finished = Signal()
 
     # Типы файлов, которые транскрибируем
-    STT_FILE_TYPES = ["voice", "video_note"]
+    STT_FILE_TYPES = ["voice", "video_note", 'videomessage']
 
     def __init__(
         self,

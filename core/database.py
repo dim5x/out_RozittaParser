@@ -564,6 +564,8 @@ class DBManager:
         topic_id:         Optional[int] = None,
         user_id:          Optional[int] = None,
         include_comments: bool          = False,
+        date_from:        Optional[str] = None,   # "YYYY-MM-DD"
+        date_to:          Optional[str] = None,   # "YYYY-MM-DD" (включительно)
     ) -> List[sqlite3.Row]:
         """
         Возвращает сообщения чата с опциональной фильтрацией.
@@ -590,6 +592,14 @@ class DBManager:
 
         if not include_comments:
             conditions.append("is_comment = 0")
+
+        if date_from is not None:
+            conditions.append("date >= ?")
+            params.append(date_from)               # "2026-04-10" < "2026-04-10 07:00" ✅
+
+        if date_to is not None:
+            conditions.append("date <= ?")
+            params.append(date_to + " 23:59:59")   # включаем весь последний день
 
         where_clause = " AND ".join(conditions)
         sql = f"SELECT * FROM messages WHERE {where_clause} ORDER BY date ASC"

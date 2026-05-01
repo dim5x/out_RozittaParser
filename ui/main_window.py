@@ -1836,7 +1836,9 @@ class MainWindow(QMainWindow):
 
         chat = self._settings_screen._current_chat or {}
         params = self._settings_screen.get_params()
-        split_mode = params.split_mode if params else "none"
+        split_mode    = params.split_mode  if params else "none"
+        date_from_str = str(params.date_from) if (params and params.date_from) else None
+        date_to_str   = str(params.date_to)   if (params and params.date_to)   else None
 
         chat_title = (
             getattr(collect_result, "chat_title", None)
@@ -1861,6 +1863,8 @@ class MainWindow(QMainWindow):
             export_formats=self._settings_screen.get_export_formats(),
             ai_split=self._settings_screen.get_ai_split(),
             ai_split_chunk_words=self._settings_screen.get_ai_split_chunk_words() if hasattr(self._settings_screen, 'get_ai_split_chunk_words') else 300_000,
+            date_from=date_from_str,
+            date_to=date_to_str,
         )
 
         worker = ExportWorker(export_params)

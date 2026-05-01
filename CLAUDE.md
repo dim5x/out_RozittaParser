@@ -3,7 +3,7 @@
 ## 📋 О проекте
 
 **Название:** Rozitta Parser (Telegram Archiver)
-**Версия:** 4.2 (SOCKS5/Tor прокси реализован; имена файлов с датой/топиком; кэш бессрочный; логи авторизации; fix faster-whisper в .exe)
+**Версия:** 4.2 (SOCKS5/Tor прокси реализован; имена файлов с датой/топиком; кэш бессрочный; логи авторизации)
 **Тип:** Desktop приложение (PySide6)
 **Назначение:** Архивирование сообщений из Telegram чатов с созданием DOCX / JSON / MD документов
 
@@ -51,13 +51,10 @@ Telegram нестабилен без VPN в ряде регионов. В при
 | # | Вариант | Сложность | Изменения в коде |
 |---|---------|-----------|-----------------|
 | 1 | **Системный VPN** | Нулевая | Не нужны — Telethon идёт через системный стек |
-| 2 | **SOCKS5 прокси** ✅ Рекомендуется | Минимальная | `proxy=` в `TelegramClient`, поле в `config.py` |
-| 3 | **MTProto прокси** | Минимальная | Аналогично SOCKS5, специфичен для Telegram |
+| 2 | **SOCKS5 прокси**  | Минимальная | `proxy=` в `TelegramClient`, поле в `config.py` |
+| 3 | **MTProto прокси** ✅ Рекомендуется| Минимальная | Аналогично SOCKS5, специфичен для Telegram |
 | 4 | **HTTP прокси** | Минимальная | Работает хуже — MTProto поверх TCP, не HTTP-трафик |
 
-> **Рекомендация для реализации: Вариант 2 (SOCKS5).**
-> Универсален, работает с любым прокси-провайдером или локальным VPN-клиентом (Clash, V2Ray и т.п.).
-> Вариант 3 (MTProto) — добавить как второй тип, если пользователь использует Telegram-специфичные серверы.
 
 ### Схема данных прокси в `config.py`:
 
@@ -121,12 +118,6 @@ ProxySection (collapse по умолчанию):
 └── [Проверить соединение] — тест-кнопка → AuthService.check_connection()
 ```
 
-### Задача в роадмапе: CFG-1
-
-| # | Задача | Файл | Фаза |
-|---|--------|------|------|
-| CFG-1 | Добавить `ProxyConfig` в `AppConfig`, хелпер `_build_client()`, UI-секцию в SettingsPanel | `config.py`, `ui/main_window.py` | После BUG-FIX |
-
 ---
 
 ## 📂 Актуальная структура проекта
@@ -136,7 +127,7 @@ rozitta_parser/
 │
 ├── main.py                          # ✅ Готов
 ├── config.py                        # ✅ Конфигурация (AppConfig, load/save_config)
-├── claud.md                         # Карта проекта для AI
+├── claude.md                         # Карта проекта для AI
 │
 ├── assets/                          # Медиа-ресурсы приложения
 │   ├── rozitta_idle.png             # ✅ Аватар по умолчанию (80×80px, используется в CharSection)
@@ -622,7 +613,7 @@ class ExportParams:
 | `docx` | `DocxGenerator` | ❌ не влияет | `chat_history.docx` |
 | `json` | `JsonGenerator` | ✅ да | `_history.json` или `_part_1.json`, `_part_2.json` |
 | `md`   | `MarkdownGenerator` | ✅ да | `_history.md` или `_part_1.md`, `_part_2.md` |
-| `html` | не реализован | — | roadmap EX-2 |
+| `html` | ✅ да | — | roadmap EX-2 |
 
 ### 5. Markdown формат сообщения
 ```markdown

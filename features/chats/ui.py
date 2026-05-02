@@ -1,5 +1,4 @@
-"""
-FILE: features/chats/ui.py
+"""FILE: features/chats/ui.py.
 
 Экран выбора чата + воркеры загрузки.
 
@@ -106,8 +105,7 @@ def _fmt(n: int) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class ChatsWorker(QThread):
-    """
-    Загружает список диалогов через ChatsService.get_dialogs().
+    """Загружает список диалогов через ChatsService.get_dialogs().
 
     Создаёт собственный TelegramClient внутри run() — НЕ принимает client снаружи.
     Это гарантирует, что client привязан к event loop данного потока.
@@ -171,8 +169,7 @@ class ChatsWorker(QThread):
 
 
 class TopicsWorker(QThread):
-    """
-    Загружает ветки (топики) форума через ChatsService.get_topics().
+    """Загружает ветки (топики) форума через ChatsService.get_topics().
 
     Создаёт собственный TelegramClient внутри run().
 
@@ -223,8 +220,7 @@ class TopicsWorker(QThread):
 
 
 class LinkedGroupWorker(QThread):
-    """
-    Проверяет linked_chat_id для одного канала при его выборе.
+    """Проверяет linked_chat_id для одного канала при его выборе.
 
     Заменяет массовую проверку всех каналов при загрузке списка.
     Запускается только когда пользователь кликает на конкретный канал.
@@ -278,8 +274,7 @@ class LinkedGroupWorker(QThread):
 
 
 class MembersWorker(QThread):
-    """
-    Загружает список участников чата через ChatsService.get_user_stats().
+    """Загружает список участников чата через ChatsService.get_user_stats().
 
     Создаёт собственный TelegramClient внутри run().
 
@@ -330,8 +325,7 @@ class MembersWorker(QThread):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class ChatItemWidget(QWidget):
-    """
-    Карточка одного чата в списке.
+    """Карточка одного чата в списке.
 
     ПРАВИЛО Qt CSS (фикс 2026-02-22):
     _refresh_style() задаёт цвета дочерних QLabel через stylesheet РОДИТЕЛЯ.
@@ -555,8 +549,7 @@ class ChatItemWidget(QWidget):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class SectionHeaderWidget(QWidget):
-    """
-    Заголовок коллапсируемой секции.
+    """Заголовок коллапсируемой секции.
     Клик → toggle тела секции. Эмитирует toggled(bool).
     """
 
@@ -640,8 +633,7 @@ class SectionHeaderWidget(QWidget):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class CollapsibleSection(QWidget):
-    """
-    Коллапсируемая секция: заголовок + список ChatItemWidget.
+    """Коллапсируемая секция: заголовок + список ChatItemWidget.
     Одна секция на тип чата (Каналы / Группы / Форумы / Диалоги).
     """
 
@@ -741,8 +733,7 @@ class CollapsibleSection(QWidget):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class CollapsibleChatsWidget(QScrollArea):
-    """
-    QScrollArea с 4 коллапсируемыми секциями чатов.
+    """QScrollArea с 4 коллапсируемыми секциями чатов.
     Группирует входящий список по полю chat["type"].
     """
 
@@ -816,8 +807,7 @@ class CollapsibleChatsWidget(QScrollArea):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class ChatsScreen(QWidget):
-    """
-    Экран выбора чата (колонка 2).
+    """Экран выбора чата (колонка 2).
 
     Сигналы (совместимы с MainWindow):
         chat_selected(dict)      — полный словарь чата (БЫЛО: int, str)
@@ -854,8 +844,7 @@ class ChatsScreen(QWidget):
     # ──────────────────────────────────────────────────────────────────────
 
     def inject_chats(self, chats: List[dict]) -> None:
-        """
-        Слот: принять список чатов от MainWindow после ChatsWorker.
+        """Слот: принять список чатов от MainWindow после ChatsWorker.
 
         Подключение в MainWindow:
             chats_worker.chats_loaded.connect(chats_screen.inject_chats)
@@ -867,8 +856,7 @@ class ChatsScreen(QWidget):
         self.character_state.emit("success")
 
     def inject_topics(self, topics: dict) -> None:
-        """
-        Слот: принять топики форума от MainWindow после TopicsWorker.
+        """Слот: принять топики форума от MainWindow после TopicsWorker.
         topics = {chat_id: {topic_id: topic_title}}
 
         Подключение в MainWindow:
@@ -898,8 +886,7 @@ class ChatsScreen(QWidget):
         return self._sel_chat
 
     def load_chats(self) -> None:
-        """
-        Обратная совместимость: запрашиваем обновление чатов.
+        """Обратная совместимость: запрашиваем обновление чатов.
         MainWindow слушает refresh_requested и создаёт ChatsWorker.
         """
         self._set_loading(True)

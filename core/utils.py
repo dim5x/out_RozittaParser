@@ -1,5 +1,5 @@
 """
-core/utils.py — Общие утилиты Rozitta Parser
+core/utils.py — Общие утилиты Rozitta Parser.
 
 Содержит:
 - finalize_telegram_id: единственная точка нормализации Telegram ID
@@ -25,7 +25,7 @@ import re
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Set
+from typing import Set
 
 from telethon import TelegramClient
 
@@ -71,6 +71,7 @@ def build_telegram_client(cfg, *,
 
 class TelegramEntityType(str, Enum):
     """Тип сущности Telegram, определяет правило нормализации ID."""
+
     USER = "user"            # Личный чат / бот
     CHAT = "chat"            # Обычная (legacy) группа
     CHANNEL = "channel"      # Канал / супергруппа / форум
@@ -185,7 +186,7 @@ def is_channel_id(raw_id: int) -> bool:
 # ---------------------------------------------------------------------------
 
 def sanitize_filename(value: str | None, max_length: int = 120) -> str:
-    """
+    r"""
     Очищает строку от символов, недопустимых в имени файла (Windows + Unix).
 
     Заменяет  / \\ : * ? " < > |  на '_', обрезает до max_length.

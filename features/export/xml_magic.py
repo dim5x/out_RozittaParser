@@ -1,5 +1,5 @@
 """
-features/export/xml_magic.py — Низкоуровневые XML-операции для DOCX
+features/export/xml_magic.py — Низкоуровневые XML-операции для DOCX.
 
 Содержит функции, которые python-docx не поддерживает «из коробки»:
   - add_bookmark()              — невидимая закладка (якорь) на параграф

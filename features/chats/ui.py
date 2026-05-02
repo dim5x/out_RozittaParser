@@ -278,7 +278,7 @@ class LinkedGroupWorker(QThread):
 
 
 class MembersWorker(QThread):
-    """
+    r"""
     Загружает список участников чата через ChatsService.get_user_stats().
 
     Создаёт собственный TelegramClient внутри run().
@@ -872,6 +872,7 @@ class ChatsScreen(QWidget):
     def inject_topics(self, topics: dict) -> None:
         """
         Слот: принять топики форума от MainWindow после TopicsWorker.
+
         topics = {chat_id: {topic_id: topic_title}}
 
         Подключение в MainWindow:

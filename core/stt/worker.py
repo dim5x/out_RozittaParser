@@ -1,5 +1,5 @@
 """
-core/stt/worker.py — STTWorker: QThread для пакетной транскрипции
+core/stt/worker.py — STTWorker: QThread для пакетной транскрипции.
 
 Запускается из MainWindow после завершения ParseWorker.
 Читает из БД все голосовые/видео сообщения без транскрипций,
@@ -46,7 +46,7 @@ class STTWorker(QThread):
     finished = Signal()
 
     # Типы файлов, которые транскрибируем
-    STT_FILE_TYPES = ["voice", "video_note", 'videomessage']
+    STT_FILE_TYPES = ["voice", "video_note"]
 
     def __init__(
         self,

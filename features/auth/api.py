@@ -1,5 +1,5 @@
 """
-features/auth/api.py — Бизнес-логика авторизации в Telegram
+features/auth/api.py — Бизнес-логика авторизации в Telegram.
 
 Исправленная версия: усилена идентификация клиента для обхода фильтров Telegram.
 """
@@ -50,6 +50,7 @@ class AuthService:
         Разбирает ссылку https://t.me/proxy?server=...&port=...&secret=...
         Возвращает dict {type, host, port, secret} или None.
         """
+
         try:
             from urllib.parse import urlparse, parse_qs
             parsed = urlparse(link.strip())
@@ -150,6 +151,7 @@ class AuthService:
         """
         Полный цикл авторизации.
         """
+
         log("🔌 Подключение к серверам Telegram...")
         if not client.is_connected():
             await client.connect()
@@ -228,6 +230,7 @@ class AuthService:
     @staticmethod
     async def get_me(client: TelegramClient, log: _LogCallback) -> Optional[User]:
         """ Получение данных о себе после входа. """
+
         try:
             me = await client.get_me()
             name = f"{me.first_name or ''} {me.last_name or ''}".strip() or me.username or "User"
@@ -251,6 +254,7 @@ class AuthService:
     @staticmethod
     async def check_session(cfg: AppConfig) -> bool:
         """ Быстрая проверка сессии при старте. """
+
         client = None
         try:
             client = AuthService.build_client(cfg)
@@ -281,6 +285,7 @@ class AuthService:
         Returns:
             Абсолютный путь к папке tdata или None если не найдено.
         """
+
         import platform
         home = os.path.expanduser("~")
 
@@ -342,6 +347,7 @@ class AuthService:
         Raises:
             AuthError: opentele2 не установлен или tdata повреждена.
         """
+
         log("🖥️ Читаю данные Telegram Desktop...")
 
         try:

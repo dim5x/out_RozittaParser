@@ -52,6 +52,7 @@ def reset_counter() -> None:
         doc = Document()
         ...
     """
+
     global _bookmark_counter
     _bookmark_counter = 0
 
@@ -77,6 +78,7 @@ def add_bookmark(paragraph: Paragraph, bookmark_name: str) -> None:
         p = doc.add_paragraph()
         add_bookmark(p, "msg_42")
     """
+
     global _bookmark_counter
     bm_id = str(_bookmark_counter)
     _bookmark_counter += 1
@@ -122,6 +124,7 @@ def add_internal_hyperlink(
         p.add_run("↩️ В ответ на: ")
         add_internal_hyperlink(p, reply_to_msg_id, f"сообщение #{reply_to_msg_id}")
     """
+
     hyperlink = OxmlElement("w:hyperlink")
     hyperlink.set(qn("w:anchor"), f"msg_{target_id}")
 
@@ -175,6 +178,7 @@ def add_external_hyperlink(
         p = doc.add_paragraph("📎 Медиафайл: ")
         add_external_hyperlink(p, media_uri, "photo.jpg")
     """
+
     part = paragraph.part
     r_id = part.relate_to(
         url,
@@ -235,6 +239,7 @@ def write_text_with_links(paragraph: Paragraph, text: str) -> None:
         write_text_with_links(p, "Смотрите: https://example.com и обычный текст")
         # → "Смотрите: " (plain) + "https://example.com" (hyperlink) + " и обычный текст" (plain)
     """
+
     if not text:
         return
 

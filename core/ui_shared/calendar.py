@@ -1,5 +1,5 @@
 """
-ui_shared/calendar.py
+ui_shared/calendar.py.
 Виджет выбора диапазона дат.
 
 Рефакторинг оригинального calendar_widget.py:
@@ -7,6 +7,7 @@ ui_shared/calendar.py
   - Убраны inline-цвета, используются константы
   - Сигнатура и логика DateRangeWidget сохранены полностью
 """
+
 from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, date as date_type
@@ -24,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 # Быстрые периоды (дни → метка)
 QUICK_RANGES: list[tuple[int, str]] = [
-    (7,   "7д"),
-    (30,  "30д"),
-    (90,  "3м"),
+    (7, "7д"),
+    (30, "30д"),
+    (90, "3м"),
     (180, "6м"),
 ]
 
@@ -72,8 +73,8 @@ class DateRangeWidget(QWidget):
 
         # Стек: слайдер / календарь
         self.stack = QStackedWidget()
-        self.stack.addWidget(self._build_slider_page())   # index 0
-        self.stack.addWidget(self._build_dates_page())    # index 1
+        self.stack.addWidget(self._build_slider_page())  # index 0
+        self.stack.addWidget(self._build_dates_page())  # index 1
         root.addWidget(self.stack)
 
     def _build_header(self) -> QHBoxLayout:
@@ -198,6 +199,7 @@ class DateRangeWidget(QWidget):
 
     def _build_date_row(self, label_text: str, field: str) -> QHBoxLayout:
         """Строит строку 'От:' или 'До:' с QDateEdit."""
+
         row = QHBoxLayout()
         row.setSpacing(styles.PAD_SMALL)
 
@@ -245,6 +247,7 @@ class DateRangeWidget(QWidget):
 
     def _toggle_mode(self) -> None:
         """Переключение между режимами слайдер ↔ выбор дат."""
+
         if self.current_mode == "slider":
             self.current_mode = "dates"
             self.stack.setCurrentIndex(1)
@@ -261,6 +264,7 @@ class DateRangeWidget(QWidget):
 
     def _on_slider_changed(self, value: int) -> None:
         """Обновить текст значения слайдера и испустить сигнал."""
+
         if value >= self.ALL_TIME_DAYS:
             self.depth_value.setText("За всё время")
         else:
@@ -270,6 +274,7 @@ class DateRangeWidget(QWidget):
 
     def _on_date_changed(self) -> None:
         """Обновить подпись диапазона и испустить сигнал."""
+
         start_q = self.start_date_edit.date()
         end_q = self.end_date_edit.date()
         days = start_q.daysTo(end_q)
@@ -290,6 +295,7 @@ class DateRangeWidget(QWidget):
 
     def _set_quick_range(self, days: int) -> None:
         """Установить быстрый диапазон дат."""
+
         end = QDate.currentDate()
         start = end.addDays(-days)
         # Блокируем сигналы чтобы не дублировать date_changed
@@ -312,6 +318,7 @@ class DateRangeWidget(QWidget):
         Возвращает (None, None) для режима «За всё время» (слайдер ≥ ALL_TIME_DAYS).
         Timezone-aware: naive datetime (без tzinfo) — caller сам добавит tz при необходимости.
         """
+
         if self.current_mode == "slider":
             days = self.days_slider.value()
             if days >= self.ALL_TIME_DAYS:
@@ -325,10 +332,10 @@ class DateRangeWidget(QWidget):
         end_q = self.end_date_edit.date()
 
         start_py: date_type = start_q.toPython()
-        end_py:   date_type = end_q.toPython()
+        end_py: date_type = end_q.toPython()
 
         start_dt = datetime.combine(start_py, datetime.min.time())
-        end_dt   = datetime.combine(end_py,   datetime.max.time())
+        end_dt = datetime.combine(end_py, datetime.max.time())
 
         return start_dt, end_dt
 

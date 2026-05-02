@@ -1,5 +1,5 @@
 """
-FILE: features/auth/ui.py
+FILE: features/auth/ui.py.
 
 Авторизация в Telegram: воркер + экран.
 
@@ -169,6 +169,7 @@ class AuthWorker(QThread):
 
     def provide_input(self, value: Optional[str]) -> None:
         """Передать ответ UI в ожидающую корутину."""
+
         self._input_value = value
         self._input_ready = True
 
@@ -228,6 +229,7 @@ class AuthWorker(QThread):
 
     async def _provide_phone(self) -> Optional[str]:
         """Телефон берётся из cfg — не спрашиваем пользователя повторно."""
+
         phone = getattr(self._cfg, "phone", None) or ""
         if phone:
             self.log_message.emit(f"📞 Телефон из конфига: {phone}")
@@ -254,6 +256,7 @@ class AuthWorker(QThread):
         Эмитирует request_input → UI показывает QInputDialog →
         provide_input() возвращает ответ → возвращаем в корутину.
         """
+
         self._input_ready = False
         self._input_value = None
         self.request_input.emit(prompt, title, is_password)
@@ -804,6 +807,7 @@ class AuthScreen(QWidget):
             text:    HTML-текст пояснения (над командой).
             command: Команда pip install ... для копирования.
         """
+
         from PySide6.QtWidgets import QDialog, QHBoxLayout
         from PySide6.QtGui import QClipboard
 
@@ -922,6 +926,7 @@ class AuthScreen(QWidget):
 
     def _check_existing_session(self) -> None:
         """Тихая проверка при старте. Если сессия жива — пропускаем форму."""
+
         self._set_controls_enabled(False)
         self._checker = SessionCheckWorker(self._cfg, parent=self)
         self._checker.session_valid.connect(self._on_session_restored)
@@ -940,6 +945,7 @@ class AuthScreen(QWidget):
     @Slot()
     def _cancel_session_check(self) -> None:
         """Отменяет любое текущее подключение и сбрасывает форму."""
+
         if self._checker is not None and self._checker.isRunning():
             self.log_message.emit("⏹ Проверка сессии отменена.")
             self._checker.quit()

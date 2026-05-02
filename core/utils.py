@@ -61,7 +61,6 @@ def build_telegram_client(cfg, *,
         config['proxy'] = (cfg.proxy_host, cfg.proxy_port, cfg.proxy_secret)
         config['connection'] = ConnectionTcpMTProxyAbridged
 
-
     return TelegramClient(**config)
 
 
@@ -199,6 +198,7 @@ def sanitize_filename(value: str | None, max_length: int = 120) -> str:
     Returns:
         Очищенное имя файла.
     """
+
     if not value:
         return "chat"
     cleaned = re.sub(r'[\/\\:*?"<>|]+', "_", value).strip().strip(".")
@@ -211,6 +211,7 @@ def is_image_path(path: str | Path) -> bool:
 
     Поддерживаемые форматы: jpg, jpeg, png, gif, bmp, webp.
     """
+
     return Path(path).suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
 
 
@@ -227,6 +228,7 @@ def ensure_aware_utc(dt: datetime) -> datetime:
     Returns:
         timezone-aware datetime в UTC.
     """
+
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
@@ -270,6 +272,7 @@ class DownloadTracker:
 
     def _load(self) -> None:
         """Читает downloaded.txt и наполняет self._ids."""
+
         if not os.path.exists(self._path):
             return
         try:
@@ -290,6 +293,7 @@ class DownloadTracker:
 
     def is_downloaded(self, message_id: int) -> bool:
         """Возвращает True если сообщение уже было скачано ранее."""
+
         return message_id in self._ids
 
     def mark_downloaded(self, message_id: int) -> None:
@@ -300,6 +304,7 @@ class DownloadTracker:
         Это критично: open/write/close на каждое сообщение блокирует asyncio
         event loop и является основной причиной 30-кратного замедления парсинга.
         """
+
         self._ids.add(message_id)
 
     def clear(self) -> None:
@@ -339,6 +344,7 @@ def format_file_size(size_bytes: int) -> str:
         >>> format_file_size(1_048_576)
         '1.0 MB'
     """
+
     if size_bytes < 0:
         return "0 B"
     for unit in ("B", "KB", "MB", "GB"):

@@ -36,7 +36,6 @@ from typing import Generator, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-
 # ---------------------------------------------------------------------------
 # Константы
 # ---------------------------------------------------------------------------
@@ -46,12 +45,11 @@ _WAL_PRAGMAS = (
     "PRAGMA synchronous  = NORMAL;"
     "PRAGMA foreign_keys = ON;"
     "PRAGMA busy_timeout = 60000;"
-    "PRAGMA wal_autocheckpoint = 100;"   # P3-1: сброс WAL каждые 100 страниц
+    "PRAGMA wal_autocheckpoint = 100;"  # P3-1: сброс WAL каждые 100 страниц
 )
 
-_MAX_RETRIES      = 3
+_MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 0.3
-
 
 # ---------------------------------------------------------------------------
 # Схема базы данных
@@ -147,7 +145,7 @@ class DBManager:
     """
 
     def __init__(self, db_path: str = "telegram_archive.db") -> None:
-        self.db_path    = db_path
+        self.db_path = db_path
         self._is_memory = (db_path == ":memory:")
 
         # thread-local для файловых БД
@@ -158,7 +156,7 @@ class DBManager:
         self._shared_lock = threading.Lock()
 
         # Защита _ensure_schema
-        self._init_lock   = threading.Lock()
+        self._init_lock = threading.Lock()
         self._initialized = False
 
         self._ensure_schema()
@@ -168,7 +166,8 @@ class DBManager:
     # ------------------------------------------------------------------
 
     def _create_conn(self) -> sqlite3.Connection:
-        """Создаёт новое sqlite3.Connection с WAL-прагмами."""
+        """Создаёт новое sqlite3. Connection с WAL-прагмами."""
+
         conn = sqlite3.connect(
             self.db_path,
             check_same_thread=False,
@@ -254,6 +253,7 @@ class DBManager:
 
     def close(self) -> None:
         """Закрывает соединение текущего потока (и разделяемое для :memory:)."""
+
         if self._is_memory:
             with self._shared_lock:
                 if self._shared_conn is not None:
@@ -575,7 +575,8 @@ class DBManager:
             topic_id:         Фильтр по топику форума.
             user_id:          Фильтр по отправителю.
             include_comments: Включать ли комментарии (is_comment = 1).
-
+            date_from:        Фильтр по дате с:.
+            date_to:          Фильтр по дате по:.
         Returns:
             Список sqlite3.Row, отсортированных по дате ASC.
         """
@@ -595,11 +596,11 @@ class DBManager:
 
         if date_from is not None:
             conditions.append("date >= ?")
-            params.append(date_from)               # "2026-04-10" < "2026-04-10 07:00" ✅
+            params.append(date_from)  # "2026-04-10" < "2026-04-10 07:00" ✅
 
         if date_to is not None:
             conditions.append("date <= ?")
-            params.append(date_to + " 23:59:59")   # включаем весь последний день
+            params.append(date_to + " 23:59:59")  # включаем весь последний день
 
         where_clause = " AND ".join(conditions)
         sql = f"SELECT * FROM messages WHERE {where_clause} ORDER BY date ASC"
@@ -609,7 +610,7 @@ class DBManager:
             return cur.fetchall()
 
     def get_post_with_comments(
-        self, chat_id: int, post_id: int
+            self, chat_id: int, post_id: int
     ) -> List[sqlite3.Row]:
         """
         Возвращает пост и все его комментарии, отсортированных по дате.
@@ -631,7 +632,7 @@ class DBManager:
             return cur.fetchall()
 
     def get_user_stats(
-        self, chat_id: int, limit: int = 50
+            self, chat_id: int, limit: int = 50
     ) -> List[Tuple[int, str, int]]:
         """
         Возвращает топ активных участников чата.
@@ -691,11 +692,11 @@ class DBManager:
     # ------------------------------------------------------------------
 
     def insert_transcription(
-        self,
-        message_id: int,
-        peer_id: int,
-        text: str,
-        model_type: str = "base",
+            self,
+            message_id: int,
+            peer_id: int,
+            text: str,
+            model_type: str = "base",
     ) -> None:
         """
         Сохраняет транскрипцию голосового/видео сообщения.
@@ -736,7 +737,7 @@ class DBManager:
         return row[0] if row else None
 
     def get_stt_candidates(
-        self, chat_id: int, file_types: Optional[List[str]] = None
+            self, chat_id: int, file_types: Optional[List[str]] = None
     ) -> List[sqlite3.Row]:
         """
         Возвращает сообщения чата с медиафайлами, у которых нет транскрипции.
@@ -785,7 +786,7 @@ class DBManager:
             return {row[0]: row[1] for row in cur.fetchall()}
 
     def get_distinct_post_ids(
-        self, chat_id: int, topic_id: Optional[int] = None
+            self, chat_id: int, topic_id: Optional[int] = None
     ) -> List[int]:
         """
         Возвращает уникальные post_id не-комментариев для split_mode='post'.
@@ -818,12 +819,13 @@ class DBManager:
         Возвращает общее количество сообщений в чате (включая комментарии).
 
         Args:
-            chat_id:  ID чата.
+            chat_id: ID чата.
             topic_id: Фильтр по топику (опционально).
 
         Returns:
             Целое число сообщений.
         """
+
         if topic_id is not None:
             sql = "SELECT COUNT(*) FROM messages WHERE chat_id = ? AND topic_id = ?"
             params: tuple = (chat_id, topic_id)
@@ -872,9 +874,9 @@ class DBManager:
         )
 
     def get_messages_for_merge(
-        self,
-        chat_id:  int,
-        topic_id: Optional[int] = None,
+            self,
+            chat_id: int,
+            topic_id: Optional[int] = None,
     ) -> List[sqlite3.Row]:
         """
         Возвращает сообщения чата в хронологическом порядке (ASC) для алгоритма склейки.
@@ -979,9 +981,10 @@ class DBManager:
             max_age_hours: Максимальный возраст кэша в часах (default 24).
 
         Returns:
-            Список chat-dict в том же формате что ChatsService.get_dialogs(),
+            Список chat-dict в том же формате, что ChatsService.get_dialogs(),
             или [] если кэш пуст / устарел.
         """
+
         with self._cursor() as cur:
             cur.execute(
                 """
@@ -1014,7 +1017,7 @@ class DBManager:
                 "linked_chat_id":      r[5],
                 "has_comments":        bool(r[6]),
                 "is_linked_discussion": bool(r[7]),
-                "is_forum":            r[2] == "forum",
+                "is_forum": r[2] == "forum",
             }
             for r in rows
         ]
@@ -1034,7 +1037,7 @@ class DBManager:
         import datetime as _dt
         try:
             updated = _dt.datetime.fromisoformat(row[0])
-            now     = _dt.datetime.utcnow()
+            now = _dt.datetime.utcnow()
             return max(0, int((now - updated).total_seconds() / 60))
         except Exception:
             return None

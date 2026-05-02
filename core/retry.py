@@ -1,5 +1,5 @@
 """
-core/retry.py — Универсальный async retry декоратор
+core/retry.py — Универсальный async retry декоратор.
 
 Предоставляет:
 - async_retry: декоратор с экспоненциальным backoff и специальной обработкой FloodWait
@@ -63,6 +63,7 @@ def async_retry(
         async def _download_media(self, message, target_path):
             return await message.download_media(file=target_path)
     """
+
     if max_attempts < 1:
         raise ValueError(f"async_retry: max_attempts должен быть >= 1, получено {max_attempts}")
 

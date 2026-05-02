@@ -1,5 +1,5 @@
 """
-features/chats/api.py — Работа со списком чатов, форумами, linked группами
+features/chats/api.py — Работа со списком чатов, форумами, linked группами.
 
 Содержит всю Telethon-логику, которая связана с чатами:
   - Получение списка диалогов (get_dialogs)
@@ -72,6 +72,7 @@ def classify_entity(entity: object) -> str:
         "forum"    — supergroup с включёнными топиками
         "unknown"  — не удалось определить (пропустить в UI)
     """
+
     if isinstance(entity, User):
         return "private"
 
@@ -155,6 +156,7 @@ class ChatsService:
         Raises:
             TelegramError: при критической ошибке Telegram API.
         """
+
         _log = log or logger.info
 
         # ── Кэш ────────────────────────────────────────────────────────
@@ -271,6 +273,7 @@ class ChatsService:
         Raises:
             ChatNotFoundError: если чат не найден или нет доступа.
         """
+
         _log = log or logger.info
 
         # Нормализуем ID: если пришёл raw положительный — добавляем -100 prefix
@@ -358,6 +361,7 @@ class ChatsService:
         Returns:
             Словарь {topic_id: title}.
         """
+
         topics: Dict[int, str] = {}
         offset_date = None
         offset_id = 0
@@ -450,6 +454,7 @@ class ChatsService:
         Returns:
             Словарь {topic_id: «Топик #ID»}.
         """
+
         seen_topics: Dict[int, str] = {}
 
         async for message in self._client.iter_messages(entity, limit=scan_limit):
@@ -499,6 +504,7 @@ class ChatsService:
         Raises:
             ChatNotFoundError: если канал не найден.
         """
+
         _log = log or logger.info
 
         normalized_id = finalize_telegram_id(channel_id, TelegramEntityType.CHANNEL)
@@ -561,6 +567,7 @@ class ChatsService:
             "message_count": int}, отсортированный по убыванию message_count.
             Пустой список при ошибке.
         """
+
         _log = log or logger.info
         normalized_id = finalize_telegram_id(chat_id, TelegramEntityType.CHANNEL)
 
@@ -639,6 +646,7 @@ class ChatsService:
         Raises:
             ChatNotFoundError: если чат не найден или нет прав.
         """
+
         normalized = finalize_telegram_id(chat_id, entity_type)
         try:
             return await self._client.get_entity(normalized)

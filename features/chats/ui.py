@@ -1,5 +1,5 @@
 """
-FILE: features/chats/ui.py
+FILE: features/chats/ui.py.
 
 Экран выбора чата + воркеры загрузки.
 
@@ -863,6 +863,7 @@ class ChatsScreen(QWidget):
         Подключение в MainWindow:
             chats_worker.chats_loaded.connect(chats_screen.inject_chats)
         """
+
         self._chats_widget.populate(chats)
         self._status.setText(f"{len(chats)} чатов")
         self._set_loading(False)
@@ -878,6 +879,7 @@ class ChatsScreen(QWidget):
         Подключение в MainWindow:
             topics_worker.topics_loaded.connect(chats_screen.inject_topics)
         """
+
         self._topics.update(topics)
 
         # Определяем chat_id для заполнения комбобокса:
@@ -907,6 +909,7 @@ class ChatsScreen(QWidget):
 
         MainWindow слушает refresh_requested и создаёт ChatsWorker.
         """
+
         self._set_loading(True)
         self.refresh_requested.emit()
 
@@ -1108,11 +1111,13 @@ class ChatsScreen(QWidget):
 
     def _on_activated(self, chat: dict) -> None:
         """Двойной клик → сразу подтвердить выбор."""
+
         self._sel_chat = chat
         self._confirm_selection()
 
     def _on_topics_clicked(self, chat_id: int) -> None:
         """Кнопка «ветки» → просим MainWindow загрузить топики."""
+
         self._pending_topics_chat_id = chat_id
         self.log_message.emit("📁 Загружаю ветки форума...")
         self._topics_combo.clear()
@@ -1122,6 +1127,7 @@ class ChatsScreen(QWidget):
 
     def _confirm_selection(self) -> None:
         """Передать выбранный чат в MainWindow через chat_selected(dict)."""
+
         chat = self._sel_chat or self._chats_widget.get_selected_chat()
         if not chat:
             return

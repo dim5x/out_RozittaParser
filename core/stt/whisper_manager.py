@@ -79,11 +79,14 @@ class WhisperManager:
     @classmethod
     def is_available(cls) -> bool:
         """Проверяет, установлен ли faster-whisper (без загрузки модели)."""
+
         try:
             import importlib.util
             return importlib.util.find_spec("faster_whisper") is not None
-        except Exception:
+        except (ImportError, ModuleNotFoundError, AttributeError):
+            logging.exception('Exception raised while check faster_whisper.')
             return False
+
 
     @classmethod
     def install(cls, log_callback=None) -> bool:

@@ -556,6 +556,7 @@ class ChatItemWidget(QWidget):
 class SectionHeaderWidget(QWidget):
     """
     Заголовок коллапсируемой секции.
+
     Клик → toggle тела секции. Эмитирует toggled(bool).
     """
 
@@ -641,6 +642,7 @@ class SectionHeaderWidget(QWidget):
 class CollapsibleSection(QWidget):
     """
     Коллапсируемая секция: заголовок + список ChatItemWidget.
+
     Одна секция на тип чата (Каналы / Группы / Форумы / Диалоги).
     """
 
@@ -742,6 +744,7 @@ class CollapsibleSection(QWidget):
 class CollapsibleChatsWidget(QScrollArea):
     """
     QScrollArea с 4 коллапсируемыми секциями чатов.
+
     Группирует входящий список по полю chat["type"].
     """
 
@@ -899,6 +902,7 @@ class ChatsScreen(QWidget):
     def load_chats(self) -> None:
         """
         Обратная совместимость: запрашиваем обновление чатов.
+
         MainWindow слушает refresh_requested и создаёт ChatsWorker.
         """
         self._set_loading(True)

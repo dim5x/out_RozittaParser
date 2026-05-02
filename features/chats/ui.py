@@ -1,4 +1,5 @@
-"""FILE: features/chats/ui.py.
+"""
+FILE: features/chats/ui.py
 
 Экран выбора чата + воркеры загрузки.
 

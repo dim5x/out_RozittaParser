@@ -1,5 +1,5 @@
 """
-core/merger.py — Сервис «агрессивной» склейки последовательных сообщений
+core/merger.py — Сервис «агрессивной» склейки последовательных сообщений.
 
 Проблема, которую решает модуль:
     Telegram позволяет быстро отправлять несколько коротких сообщений подряд,
@@ -34,9 +34,9 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, List, Optional
 
 from core.database import DBManager
 
@@ -67,12 +67,12 @@ class MergeStats:
         singles_count: Сообщения, оставшиеся одиночными (группа из 1).
         merged_msgs:   Суммарное число сообщений, вошедших в группы ≥ 2.
     """
-    chat_id:       int
-    topic_id:      Optional[int]
-    total_msgs:    int = 0
-    groups_count:  int = 0
+    chat_id: int
+    topic_id: Optional[int]
+    total_msgs: int = 0
+    groups_count: int = 0
     singles_count: int = 0
-    merged_msgs:   int = 0
+    merged_msgs: int = 0
 
 
 # ==============================================================================
@@ -82,9 +82,10 @@ class MergeStats:
 @dataclass
 class _Group:
     """Промежуточное состояние группы при обходе сообщений."""
-    row_ids:    List[int]   # первичные ключи (id) — для UPDATE
-    sender_id:  Optional[int]
-    last_date:  datetime    # дата последнего добавленного сообщения
+
+    row_ids: List[int]  # первичные ключи (id) — для UPDATE
+    sender_id: Optional[int]
+    last_date: datetime  # дата последнего добавленного сообщения
 
 
 # ==============================================================================
@@ -108,22 +109,22 @@ class MergerService:
     """
 
     def __init__(
-        self,
-        time_delta: int          = DEFAULT_MERGE_TIME_DELTA,
-        log:        _LogCallback = None,
+            self,
+            time_delta: int = DEFAULT_MERGE_TIME_DELTA,
+            log: _LogCallback = None,
     ) -> None:
         self._time_delta = time_delta
-        self._log        = log or logger.info
+        self._log = log or logger.info
 
     # ------------------------------------------------------------------
     # Публичный API
     # ------------------------------------------------------------------
 
     def run_merge(
-        self,
-        db:       DBManager,
-        chat_id:  int,
-        topic_id: Optional[int] = None,
+            self,
+            db: DBManager,
+            chat_id: int,
+            topic_id: Optional[int] = None,
     ) -> MergeStats:
         """
         Координирует полный цикл склейки для одного чата / топика:
@@ -169,9 +170,9 @@ class MergerService:
         for group in groups:
             if len(group.row_ids) >= 2:
                 db.set_merge_group(group.row_ids, group_id=next_group_id)
-                stats.groups_count  += 1
-                stats.merged_msgs   += len(group.row_ids)
-                next_group_id       += 1
+                stats.groups_count += 1
+                stats.merged_msgs += len(group.row_ids)
+                next_group_id += 1
             else:
                 stats.singles_count += 1
 
@@ -210,9 +211,9 @@ class MergerService:
         current: Optional[_Group] = None
 
         for row in rows:
-            row_id    = row["id"]
+            row_id = row["id"]
             sender_id = row["user_id"]
-            date_str  = row["date"]
+            date_str = row["date"]
 
             # Парсим дату — все даты хранятся в UTC ISO-формате
             msg_date = _parse_date(date_str)
@@ -220,16 +221,16 @@ class MergerService:
             if current is None:
                 # Первое сообщение — начинаем первую группу
                 current = _Group(
-                    row_ids   = [row_id],
-                    sender_id = sender_id,
-                    last_date = msg_date,
+                    row_ids=[row_id],
+                    sender_id=sender_id,
+                    last_date=msg_date,
                 )
                 continue
 
             # Вычисляем временной интервал
             delta_s = (msg_date - current.last_date).total_seconds()
 
-            same_author   = (sender_id is not None and sender_id == current.sender_id)
+            same_author = (sender_id is not None and sender_id == current.sender_id)
             within_window = (0 <= delta_s <= self._time_delta)
 
             if same_author and within_window:
@@ -240,9 +241,9 @@ class MergerService:
                 # Закрываем текущую группу, начинаем новую
                 groups.append(current)
                 current = _Group(
-                    row_ids   = [row_id],
-                    sender_id = sender_id,
-                    last_date = msg_date,
+                    row_ids=[row_id],
+                    sender_id=sender_id,
+                    last_date=msg_date,
                 )
 
         # Не забываем последнюю незакрытую группу

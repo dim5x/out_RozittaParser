@@ -853,7 +853,7 @@ class SettingsPanel(QWidget):
 
         selected_user_id = int(self._members_combo.currentData() or 0)
         self.user_id = None if selected_user_id == 0 else selected_user_id
-        print(self.user_id)
+
         # Даты
         date_from = None
         date_to = None

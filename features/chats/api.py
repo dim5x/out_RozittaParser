@@ -574,6 +574,8 @@ class ChatsService:
         counts: Dict[int, int] = {}
         # Кэш имён: {user_id: display_name}
         names: Dict[int, str] = {}
+        # Кэш usernames: {user_id: display_name}
+        usernames: Dict[int, str] = {}
 
         try:
             async for message in self._client.iter_messages(entity, limit=1000):
@@ -593,9 +595,11 @@ class ChatsService:
                                 or sender.username
                                 or str(sender_id)
                             )
+                            username = (sender.username or "").strip()
                         else:
                             name = getattr(sender, "title", str(sender_id))
                         names[sender_id] = name
+                        usernames[sender_id] = username
 
         except Exception as exc:
             logger.warning("chats: get_user_stats iter_messages failed: %s", exc)
@@ -606,7 +610,7 @@ class ChatsService:
         sorted_users = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:limit]
 
         result: List[Dict] = [
-            {"id": uid, "name": names.get(uid, f"User_{uid}"), "username": None, "message_count": cnt}
+            {"id": uid, "name": names.get(uid, f"User_{uid}"), "username": usernames.get(uid, None), "message_count": cnt}
             for uid, cnt in sorted_users
         ]
 

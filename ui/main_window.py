@@ -838,7 +838,7 @@ class SettingsPanel(QWidget):
         from features.export.participants import export_participants_docx
         users = self._members_cache
         title = self._current_chat['title']
-        filepath= export_participants_docx(users, title, f'./output/{title}')
+        filepath = export_participants_docx(users, title, f'./output/{title}')
 
         self.log_message.emit(f"Экспортировано {len(users)} участников => {filepath}")
     # ──────────────────────────────────────────────────────────────────────

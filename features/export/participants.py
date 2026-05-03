@@ -71,9 +71,9 @@ def export_participants_docx(
 
     # ── Метаданные ────────────────────────────────────────────────────────
     meta_p = doc.add_paragraph()
-    meta_p.add_run(f"Дата выгрузки: ").bold = False
+    meta_p.add_run("Дата выгрузки: ").bold = False
     meta_p.add_run(date_str).bold = True
-    meta_p.add_run(f"   •   Участников: ").bold = False
+    meta_p.add_run("   •   Участников: ").bold = False
     meta_p.add_run(str(len(sorted_users))).bold = True
     if total_msgs:
         meta_p.add_run("   •   Сообщений в архиве: ").bold = False

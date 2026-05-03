@@ -43,7 +43,7 @@ from PySide6.QtMultimedia import QSoundEffect
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QSizePolicy, QProgressBar, QStackedWidget,
-    QFrame, QPushButton, QApplication, QSpinBox,
+    QFrame, QPushButton, QApplication, QSpinBox, QComboBox,
     QScrollArea, QGridLayout,
 )
 
@@ -57,12 +57,12 @@ from core.ui_shared.styles import (
     RADIUS_LG, RADIUS_MD,
     FONT_FAMILY, FONT_SIZE_BODY, FONT_SIZE_SMALL,
     COLOR_SUCCESS, COLOR_ERROR, COLOR_WARNING,
-    QSS_PROGRESS, QSS_INPUT,
+    QSS_PROGRESS, QSS_INPUT, QSS_COMBOBOX,
 )
 from core.ui_shared.widgets import (
     RozittaWidget, LogWidget,
     ModernCard, SectionTitle, ToggleSwitch,
-    MediaButton, ChipButton, SplitModeButton, UserTag,
+    MediaButton, ChipButton, SplitModeButton,
 )
 from core.ui_shared.calendar import DateRangeWidget
 from features.auth.ui import AuthScreen
@@ -344,7 +344,7 @@ class SettingsPanel(QWidget):
         super().__init__(parent)
         self._cfg           = cfg
         self._current_chat: Optional[dict] = None
-        self._user_tags:    list[UserTag]   = []
+        self._selected_user_id: Optional[int] = None
         self._user_mode:    str             = "messages-only"
         self._split_mode:   str             = "none"
         self._split_buttons: list[SplitModeButton] = []
@@ -625,29 +625,13 @@ class SettingsPanel(QWidget):
         self._export_members_btn.clicked.connect(self._on_export_members_clicked)
         layout.addWidget(self._export_members_btn)
 
-        # Контейнер тегов (прокручиваемый)
-        self._tags_scroll = QScrollArea()
-        self._tags_scroll.setFixedHeight(56)
-        self._tags_scroll.setWidgetResizable(True)
-        self._tags_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self._tags_scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        self._tags_scroll.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        self._tags_scroll.setStyleSheet(
-            "QScrollArea { background: transparent; border: none; }"
-        )
-
-        self._tags_container = QWidget()
-        self._tags_container.setStyleSheet("background: transparent;")
-        self._tags_layout = QHBoxLayout(self._tags_container)
-        self._tags_layout.setContentsMargins(0, 4, 0, 4)
-        self._tags_layout.setSpacing(6)
-        self._tags_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self._tags_scroll.setWidget(self._tags_container)
-        layout.addWidget(self._tags_scroll)
+        # Выпадающий список пользователей
+        self._members_combo = QComboBox()
+        self._members_combo.setEnabled(False)
+        self._members_combo.setFixedHeight(34)
+        self._members_combo.addItem("Все участники", 0)
+        self._members_combo.setStyleSheet(QSS_COMBOBOX)
+        layout.addWidget(self._members_combo)
 
         return card
 
@@ -831,7 +815,6 @@ class SettingsPanel(QWidget):
     def _on_load_members_clicked(self) -> None:
         if self._current_chat:
             self.load_members_requested.emit(self._current_chat)
-
             self._export_members_btn.setEnabled(True)
 
     def _on_export_members_clicked(self) -> None:
@@ -854,45 +837,23 @@ class SettingsPanel(QWidget):
 
     def populate_members(self, users: list[dict]) -> None:
         self._members_cache = users.copy()
-        # Очистить старые теги
-        self._user_tags.clear()
-        while self._tags_layout.count():
-            item = self._tags_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        # Тег «Все»
-        all_tag = UserTag("Все", user_id=0, is_all=True, selected=True)
-        self._tags_layout.addWidget(all_tag)
-        self._user_tags.append(all_tag)
-
-        # Теги участников
+        self._members_combo.clear()
+        self._members_combo.addItem("Все участники", 0)
         for user in users:
             uid = user.get("id", 0)
             name = user.get("name", str(uid))
-            tag = UserTag(name, user_id=uid, is_all=False, selected=False)
-            self._tags_layout.addWidget(tag)
-            self._user_tags.append(tag)
-
-        self._tags_layout.addStretch(1)
+            self._members_combo.addItem(name, uid)
+        self._members_combo.setEnabled(True)
+        self._members_combo.setCurrentIndex(0)
         self.log_message.emit(f"Загружено участников: {len(users)}")
 
     def get_params(self) -> Optional[ParseParams]:
         if self._current_chat is None:
             return None
 
-        # Выбранные user_ids (без «Все»-тега)
-        user_ids: list[int] = []
-        all_selected = True
-        for tag in self._user_tags:
-            if tag.is_all:
-                if not tag.isChecked():
-                    all_selected = False
-            elif tag.isChecked():
-                user_ids.append(tag.user_id)
-        if all_selected:
-            user_ids = []
-
+        selected_user_id = int(self._members_combo.currentData() or 0)
+        self.user_id = None if selected_user_id == 0 else selected_user_id
+        print(self.user_id)
         # Даты
         date_from = None
         date_to = None
@@ -915,7 +876,7 @@ class SettingsPanel(QWidget):
             date_from            = date_from,
             date_to              = date_to,
             user_filter_mode     = self._user_mode,
-            user_ids             = user_ids,
+            user_id              = self.user_id,
             split_mode           = self._split_mode,
             include_comments     = self._toggle_comments.isChecked(),
             re_download          = self._toggle_redownload.isChecked(),
@@ -1906,6 +1867,7 @@ class MainWindow(QMainWindow):
             chat_title=chat_title,
             split_mode=split_mode,
             topic_id=chat.get("selected_topic_id"),
+            user_id=params.user_id,
             include_comments=params.include_comments if params else False,
             output_dir=chat_dir,
             db_path=db_path,

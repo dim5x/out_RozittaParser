@@ -90,6 +90,7 @@ class ParseParams:
     # Фильтр пользователей
     user_filter_mode: str = "messages-only"   # "messages-only" | "all-threads"
     user_ids: list[int] = field(default_factory=list)  # пусто = все
+    user_id: int        = 0;
 
     # Разбивка DOCX
     split_mode:         str  = "none"   # "none" | "day" | "month" | "post"
@@ -870,7 +871,7 @@ class ParseWorker(QThread):
             result = loop.run_until_complete(self._collect())
             self.finished.emit(result)
         except Exception as exc:
-            logger.exception("ParseWorker error")
+            logger.exception(f"ParseWorker error, {exc}")
             self.error.emit(str(exc))
             self.character_state.emit("error")
         finally:

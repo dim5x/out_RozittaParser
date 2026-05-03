@@ -1,5 +1,5 @@
 """
-core/exceptions.py — Иерархия исключений Rozitta Parser
+core/exceptions.py — Иерархия исключений Rozitta Parser.
 
 Все кастомные исключения проекта организованы в дерево:
 

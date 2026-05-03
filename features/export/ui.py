@@ -1,5 +1,5 @@
 """
-features/export/ui.py — ExportWorker: QThread-обёртка над DocxGenerator
+features/export/ui.py — ExportWorker: QThread-обёртка над DocxGenerator.
 
 Запускается автоматически после успешного ParseWorker.finished
 (или вручную, если данные уже есть в БД).
@@ -76,6 +76,7 @@ class ExportParams:
         output_dir:       Папка для сохранения.
         db_path:          Путь к SQLite-файлу с сообщениями.
     """
+
     chat_id:          int
     chat_title:       str
     period_label:     str           = "fullchat"
@@ -153,6 +154,7 @@ class ExportWorker(QThread):
             3. Вызвать generate()
             4. Эмитить export_complete(files)
         """
+
         p = self._params
         formats = p.export_formats or ["docx"]
         logger.info(

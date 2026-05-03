@@ -1,5 +1,5 @@
 """
-FILE: features/parser/ui.py
+FILE: features/parser/ui.py.
 
 UI-слой парсера: экран настроек (колонка 3 из Rozitta_prototype.html)
 и QThread-воркер запуска парсинга.
@@ -68,6 +68,7 @@ class ParseParams:
     Все параметры парсинга, собираемые с экрана.
     Передаётся в ParseWorker и далее в ParserService.collect_data().
     """
+
     chat: dict                           # словарь выбранного чата из ChatsScreen
 
     # Медиа
@@ -111,6 +112,7 @@ class ParseParams:
 def _label(text: str, size: int = FONT_SIZE_SMALL,
            color: str = TEXT_SECONDARY) -> QLabel:
     """Быстрое создание QLabel с нужным шрифтом и цветом."""
+
     lbl = QLabel(text)
     lbl.setFont(QFont(FONT_FAMILY, size))
     lbl.setStyleSheet(f"QLabel {{ color: {color}; background: transparent; }}")
@@ -123,6 +125,7 @@ class _SubSection(QFrame):
     Контейнер-подсекция с тёмным фоном и скруглёнными углами.
     Соответствует .date-range, .user-filter из прототипа.
     """
+
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setStyleSheet(f"""
@@ -145,6 +148,7 @@ class _UserModeButton(QPushButton):
     Кнопка режима фильтрации пользователей (Только сообщения / Все ветки).
     Соответствует .user-mode-option из прототипа.
     """
+
     def __init__(self, icon: str, text: str, mode: str,
                  parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -595,6 +599,7 @@ class ParseSettingsScreen(QWidget):
             'слово' in text.lower()
             date.year >= 2024
         """
+
         w = QWidget()
         w.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(w)
@@ -639,6 +644,7 @@ class ParseSettingsScreen(QWidget):
         Подключение в MainWindow:
             chats_screen.chat_selected.connect(settings.set_chat)
         """
+
         self._current_chat = chat
         title = chat.get("title", "")
         chat_id = chat.get("id", "")
@@ -655,6 +661,7 @@ class ParseSettingsScreen(QWidget):
         Подключение в MainWindow:
             members_worker.members_loaded.connect(settings.populate_members)
         """
+
         # Очищаем старые теги (кроме «Все»)
         for tag in self._member_tags:
             self._tags_layout.removeWidget(tag)
@@ -688,6 +695,7 @@ class ParseSettingsScreen(QWidget):
         Собрать ParseParams из текущего состояния виджета.
         Возвращает None если чат не выбран.
         """
+
         if self._current_chat is None:
             return None
 
@@ -769,12 +777,14 @@ class ParseSettingsScreen(QWidget):
 
     def _on_tag_all_toggled(self, checked: bool) -> None:
         """При выборе «Все» снять выделение с остальных тегов."""
+
         if checked:
             for tag in self._member_tags:
                 tag.setChecked(False)
 
     def _on_user_tag_toggled(self, checked: bool) -> None:
         """При выборе конкретного участника снять «Все»."""
+
         if checked:
             self._tag_all.setChecked(False)
 
@@ -787,6 +797,7 @@ class ParseSettingsScreen(QWidget):
         Заблокировать/разблокировать UI во время парсинга.
         Вызывается из MainWindow при получении сигналов от ParseWorker.
         """
+
         self._start_btn.setEnabled(not active)
         self._load_members_btn.setEnabled(not active and self._current_chat is not None)
         if active:
@@ -852,6 +863,7 @@ class ParseWorker(QThread):
 
     def run(self) -> None:
         """Точка входа потока. Создаёт event loop и запускает корутину."""
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -866,6 +878,7 @@ class ParseWorker(QThread):
 
     async def _collect(self):
         """Вызывает ParserService.collect_data() с параметрами из ParseParams."""
+
         import os
         from features.parser.api import ParserService
         from core.database import DBManager
@@ -920,6 +933,7 @@ class ParseWorker(QThread):
 
     def _build_collect_params(self, chat_dir: str):
         """Преобразует ParseParams (UI) → CollectParams (API)."""
+
         from features.parser.api import CollectParams
         from datetime import datetime, timezone
 

@@ -1,5 +1,5 @@
 """
-features/parser/api.py — Сбор сообщений, скачивание медиа, обход FloodWait
+features/parser/api.py — Сбор сообщений, скачивание медиа, обход FloodWait.
 
 Содержит всю логику итерации по сообщениям Telegram:
   - collect_data()       — главный метод: iter_messages + фильтрация + медиа
@@ -64,16 +64,16 @@ from config import (
 from core.database import DBManager
 from core.exceptions import (
     ChatNotFoundError,
-    FloodWaitError,
     TelegramError,
 )
 from core.retry import async_retry
-from core.utils import ensure_aware_utc, finalize_telegram_id, sanitize_filename, TelegramEntityType, DownloadTracker
+from core.utils import ensure_aware_utc, sanitize_filename, DownloadTracker
 
 # simpleeval — опциональная зависимость для filter_expression
 # Без неё параметр CollectParams.filter_expression молча игнорируется.
 try:
     from simpleeval import simple_eval as _simple_eval
+
     _SIMPLEEVAL_OK = True
 except ImportError:
     _SIMPLEEVAL_OK = False
@@ -82,7 +82,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Тип лог-колбэка: Qt-сигнал или просто print/logger.info
-_LogCallback      = Callable[[str], None]
+_LogCallback = Callable[[str], None]
 # Тип прогресс-колбэка: принимает int 0..100
 _ProgressCallback = Callable[[int], None]
 
@@ -104,11 +104,11 @@ _DB_BATCH_SIZE = 200
 _ADAPTIVE_BATCH_SIZE = 100
 # Подпапки для каждого типа медиа внутри MEDIA_FOLDER_NAME
 _MEDIA_SUBFOLDERS: dict[str, str] = {
-    "photo":      "photos",
-    "video":      "videos",
-    "voice":      "voice",
+    "photo": "photos",
+    "video": "videos",
+    "voice": "voice",
     "video_note": "video_notes",
-    "file":       "files",
+    "file": "files",
 }
 
 
@@ -150,18 +150,18 @@ class CollectParams:
         user_ids:          Фильтр по участникам — список ID (None = все).
         output_dir:        Корневая папка для медиа и БД.
     """
-    chat_id:           int
-    topic_id:          Optional[int]       = None
-    days_limit:        int                 = 0       # используется если date_from не задан
-    date_from:         Optional[datetime]  = None    # нижняя граница дат (включительно)
-    date_to:           Optional[datetime]  = None    # верхняя граница дат (включительно)
-    media_filter:      Optional[List[str]] = None
-    download_comments: bool                = False
-    user_ids:          Optional[List[int]] = None
-    output_dir:        str                 = "output"
-    re_download:       bool                = False   # True = игнорировать downloaded.txt и перекачать заново
-    filter_expression: Optional[str]      = None    # выражение-фильтр сообщений (simpleeval)
-    use_takeout:       bool                = False   # True = использовать Takeout API (отдельные лимиты)
+    chat_id: int
+    topic_id: Optional[int] = None
+    days_limit: int = 0  # используется если date_from не задан
+    date_from: Optional[datetime] = None  # нижняя граница дат (включительно)
+    date_to: Optional[datetime] = None  # верхняя граница дат (включительно)
+    media_filter: Optional[List[str]] = None
+    download_comments: bool = False
+    user_ids: Optional[List[int]] = None
+    output_dir: str = "output"
+    re_download: bool = False  # True = игнорировать downloaded.txt и перекачать заново
+    filter_expression: Optional[str] = None  # выражение-фильтр сообщений (simpleeval)
+    use_takeout: bool = False  # True = использовать Takeout API (отдельные лимиты)
 
 
 # ==============================================================================
@@ -183,17 +183,17 @@ class CollectResult:
         period_label:    Строка периода для имени файла DOCX.
         errors:          Некритические ошибки (например, один файл не скачался).
     """
-    success:        bool
-    chat_id:        int
-    chat_title:     str            = ""
-    messages_count: int            = 0
-    comments_count: int            = 0
-    media_count:    int            = 0
-    period_label:   str            = "fullchat"
-    errors:         List[str]      = field(default_factory=list)
+    success: bool
+    chat_id: int
+    chat_title: str = ""
+    messages_count: int = 0
+    comments_count: int = 0
+    media_count: int = 0
+    period_label: str = "fullchat"
+    errors: List[str] = field(default_factory=list)
     # Абсолютный путь к БД — передаётся из ParseWorker, чтобы MainWindow
     # не реконструировал путь из chat_title (расхождение → OperationalError).
-    db_path:        str            = ""
+    db_path: str = ""
 
 
 # ==============================================================================
@@ -222,25 +222,25 @@ class ParserService:
     """
 
     def __init__(
-        self,
-        client:   TelegramClient,
-        db:       DBManager,
-        log:      _LogCallback      = None,
-        progress: _ProgressCallback = None,
+            self,
+            client: TelegramClient,
+            db: DBManager,
+            log: _LogCallback = None,
+            progress: _ProgressCallback = None,
     ) -> None:
-        self._client      = client
-        self._db          = db
-        self._log         = log or logger.info
+        self._client = client
+        self._db = db
+        self._log = log or logger.info
         self._progress_cb = progress or (lambda _: None)
 
         # Счётчики (обнуляются в начале каждого collect_data)
-        self._msg_count:     int = 0
+        self._msg_count: int = 0
         self._comment_count: int = 0
-        self._media_count:   int = 0
+        self._media_count: int = 0
 
         # Текущий контекст (для путей к медиа)
-        self._chat_title:  str = "chat"
-        self._output_dir:  str = "output"
+        self._chat_title: str = "chat"
+        self._output_dir: str = "output"
 
     # ------------------------------------------------------------------
     # 1. Главный метод
@@ -273,11 +273,11 @@ class ParserService:
             TelegramError:     при критической ошибке API (не FloodWait).
         """
         # --- Сброс счётчиков и семафор параллельных скачиваний ---
-        self._msg_count     = 0
+        self._msg_count = 0
         self._comment_count = 0
-        self._media_count   = 0
-        self._output_dir    = params.output_dir
-        self._sem           = asyncio.Semaphore(_MEDIA_PARALLELISM)
+        self._media_count = 0
+        self._output_dir = params.output_dir
+        self._sem = asyncio.Semaphore(_MEDIA_PARALLELISM)
 
         errors: List[str] = []
 
@@ -299,9 +299,9 @@ class ParserService:
 
         # --- Определяем название и тип чата ---
         chat_title = (
-            getattr(entity, "title", None)
-            or getattr(entity, "username", None)
-            or str(normalized_id)
+                getattr(entity, "title", None)
+                or getattr(entity, "username", None)
+                or str(normalized_id)
         )
         self._chat_title = chat_title
 
@@ -422,20 +422,20 @@ class ParserService:
                 logger.debug("[DIAG] _iter_one_topic start: topic_id=%s", _topic_id)
                 self._log(f"[DIAG] iter_one_topic → topic_id={_topic_id}")
                 await self._iter_one_topic(
-                    entity              = entity,
-                    topic_id            = _topic_id,
-                    params              = params,
-                    normalized_id       = normalized_id,
-                    cutoff_date         = cutoff_date,
-                    upper_date          = upper_date,
-                    total_est           = total_est,
-                    insert_fn           = insert_fn,
-                    tracker             = tracker,
-                    errors              = errors,
-                    posts_with_comments = posts_with_comments,
-                    linked_chat_id      = linked_chat_id,
-                    chat_type           = chat_type,
-                    batch               = _batch,
+                    entity=entity,
+                    topic_id=_topic_id,
+                    params=params,
+                    normalized_id=normalized_id,
+                    cutoff_date=cutoff_date,
+                    upper_date=upper_date,
+                    total_est=total_est,
+                    insert_fn=insert_fn,
+                    tracker=tracker,
+                    errors=errors,
+                    posts_with_comments=posts_with_comments,
+                    linked_chat_id=linked_chat_id,
+                    chat_type=chat_type,
+                    batch=_batch,
                 )
                 logger.debug("[DIAG] _iter_one_topic done: topic_id=%s msgs_so_far=%d", _topic_id, self._msg_count)
                 self._log(f"[DIAG] iter_one_topic done: topic_id={_topic_id} msgs={self._msg_count}")
@@ -448,16 +448,16 @@ class ParserService:
                 await self._client(FinishTakeoutSessionRequest(success=False))
                 logger.debug("parser: старая takeout-сессия завершена")
             except Exception:
-                pass  # нет висящей сессии — нормально
+                logging.exception('Exception in _run_topics()')  # нет висящей сессии — нормально
             try:
                 async with self._client.takeout(
-                    contacts=False,
-                    users=False,
-                    chats=False,
-                    megagroups=True,
-                    channels=True,
-                    files=bool(params.media_filter),
-                    max_file_size=None,
+                        contacts=False,
+                        users=False,
+                        chats=False,
+                        megagroups=True,
+                        channels=True,
+                        files=bool(params.media_filter),
+                        max_file_size=None,
                 ) as takeout_client:
                     # В режиме takeout подменяем клиент только для итерации
                     _original_client = self._client
@@ -493,15 +493,15 @@ class ParserService:
                 self._log(f"  🔍 Пост #{post_id} ({replies_count} комментариев)...")
                 try:
                     downloaded = await self._get_post_replies(
-                        channel_id     = normalized_id,
-                        post_id        = post_id,
-                        linked_chat_id = linked_chat_id,
-                        media_filter   = params.media_filter,
-                        topic_id       = params.topic_id,
-                        insert_fn      = insert_fn,
+                        channel_id=normalized_id,
+                        post_id=post_id,
+                        linked_chat_id=linked_chat_id,
+                        media_filter=params.media_filter,
+                        topic_id=params.topic_id,
+                        insert_fn=insert_fn,
                     )
                     self._comment_count += downloaded
-                    self._msg_count     += downloaded
+                    self._msg_count += downloaded
                     if downloaded:
                         self._log(f"    ✅ Скачано {downloaded} комментариев")
                 except Exception as exc:
@@ -517,14 +517,14 @@ class ParserService:
         )
 
         return CollectResult(
-            success        = True,
-            chat_id        = normalized_id,
-            chat_title     = chat_title,
-            messages_count = self._msg_count,
-            comments_count = self._comment_count,
-            media_count    = self._media_count,
-            period_label   = period_label,
-            errors         = errors,
+            success=True,
+            chat_id=normalized_id,
+            chat_title=chat_title,
+            messages_count=self._msg_count,
+            comments_count=self._comment_count,
+            media_count=self._media_count,
+            period_label=period_label,
+            errors=errors,
         )
 
     # ------------------------------------------------------------------
@@ -532,21 +532,21 @@ class ParserService:
     # ------------------------------------------------------------------
 
     async def _iter_one_topic(
-        self,
-        entity,
-        topic_id:            Optional[int],
-        params:              CollectParams,
-        normalized_id:       int,
-        cutoff_date:         Optional[datetime],
-        upper_date:          Optional[datetime],
-        total_est:           int,
-        insert_fn:           Callable,
-        tracker:             DownloadTracker,
-        errors:              List[str],
-        posts_with_comments: Dict[int, int],
-        linked_chat_id:      Optional[int],
-        chat_type:           str,
-        batch:               List[dict],
+            self,
+            entity,
+            topic_id: Optional[int],
+            params: CollectParams,
+            normalized_id: int,
+            cutoff_date: Optional[datetime],
+            upper_date: Optional[datetime],
+            total_est: int,
+            insert_fn: Callable,
+            tracker: DownloadTracker,
+            errors: List[str],
+            posts_with_comments: Dict[int, int],
+            linked_chat_id: Optional[int],
+            chat_type: str,
+            batch: List[dict],
     ) -> None:
         """
         Итерирует сообщения одного топика (или всего чата если topic_id=None).
@@ -590,12 +590,12 @@ class ParserService:
                     f"topic_id={topic_id} max_id={_max_id_arg} attempt={attempts}"
                 )
                 async for message in self._client.iter_messages(
-                    entity,
-                    reply_to=topic_id,
-                    min_id=0,
-                    # Продолжаем с последнего известного ID при рестарте после FloodWait
-                    max_id=_max_id_arg,
-                    reverse=False,
+                        entity,
+                        reply_to=topic_id,
+                        min_id=0,
+                        # Продолжаем с последнего известного ID при рестарте после FloodWait
+                        max_id=_max_id_arg,
+                        reverse=False,
                 ):
                     last_message_id = message.id
                     _iter_msg_count += 1
@@ -644,18 +644,18 @@ class ParserService:
 
                     # Определяем, требуется ли скачивание медиа для этого сообщения
                     needs_download = (
-                        params.media_filter is not None
-                        and self._should_download(message, params.media_filter)
+                            params.media_filter is not None
+                            and self._should_download(message, params.media_filter)
                     )
 
                     if needs_download:
                         # Медиа-сообщение: асинхронная задача (download + извлечение полей)
                         task = asyncio.create_task(
                             self._process_message(
-                                message      = message,
-                                chat_id      = normalized_id,
-                                topic_id     = topic_id,
-                                media_filter = params.media_filter,
+                                message=message,
+                                chat_id=normalized_id,
+                                topic_id=topic_id,
+                                media_filter=params.media_filter,
                             )
                         )
                         _pending.append((message.id, task))
@@ -693,9 +693,9 @@ class ParserService:
                     if _iter_msg_count % _ADAPTIVE_BATCH_SIZE == 0:
                         elapsed = time.perf_counter() - _batch_t_start
                         if elapsed < 0.5:
-                            wait = 0.3        # сервер отвечает быстро — небольшая пауза
+                            wait = 0.3  # сервер отвечает быстро — небольшая пауза
                         elif elapsed < 2.0:
-                            wait = 0.7        # умеренно
+                            wait = 0.7  # умеренно
                         else:
                             wait = elapsed * 0.5  # сервер тормозит — не давим
                         logger.debug(
@@ -765,12 +765,12 @@ class ParserService:
     # ------------------------------------------------------------------
 
     async def _flush_tasks(
-        self,
-        pending:   list[tuple[int, asyncio.Task]],
-        batch:     List[dict],
-        errors:    List[str],
-        tracker:   DownloadTracker,
-        total_est: int,
+            self,
+            pending: list[tuple[int, asyncio.Task]],
+            batch: List[dict],
+            errors: List[str],
+            tracker: DownloadTracker,
+            total_est: int,
     ) -> None:
         """
         Ожидает завершения всех задач в pending через asyncio.gather(),
@@ -786,16 +786,16 @@ class ParserService:
         if not pending:
             return
 
-        tasks   = [t for _, t in pending]
+        tasks = [t for _, t in pending]
         first_id = pending[0][0]
-        last_id  = pending[-1][0]
+        last_id = pending[-1][0]
         self._log(f"⬇️  Батч медиа: {len(tasks)} файлов (id {first_id}–{last_id})...")
         logger.debug("[DIAG] gather start: %d tasks", len(tasks))
         try:
             results = await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True),
                 timeout=3600.0,  # 1 час — страховка от полного зависания;
-                                 # 300s было слишком мало для нескольких 1GB файлов
+                # 300s было слишком мало для нескольких 1GB файлов
             )
         except asyncio.TimeoutError:
             logger.error(
@@ -834,14 +834,14 @@ class ParserService:
     # ------------------------------------------------------------------
 
     async def _process_message(
-        self,
-        message:      Message,
-        chat_id:      int,
-        topic_id:     Optional[int],
-        media_filter: Optional[List[str]],
-        post_id:      Optional[int] = None,
-        is_comment:   bool          = False,
-        from_linked:  bool          = False,
+            self,
+            message: Message,
+            chat_id: int,
+            topic_id: Optional[int],
+            media_filter: Optional[List[str]],
+            post_id: Optional[int] = None,
+            is_comment: bool = False,
+            from_linked: bool = False,
     ) -> tuple[Optional[dict], Optional[str]]:
         """
         Обрабатывает одно сообщение: извлекает поля и скачивает медиа.
@@ -862,8 +862,8 @@ class ParserService:
             media_error_str — описание ошибки скачивания или None.
         """
         sender_name = self._get_sender_name(message)
-        date_str    = message.date.strftime("%Y-%m-%d %H:%M:%S") if message.date else ""
-        text        = message.text or ""
+        date_str = message.date.strftime("%Y-%m-%d %H:%M:%S") if message.date else ""
+        text = message.text or ""
 
         # reply_to_msg_id
         reply_to_msg_id: Optional[int] = None
@@ -876,12 +876,12 @@ class ParserService:
         # Медиа
         media_path: Optional[str] = None
         media_type: Optional[str] = None
-        file_size:  Optional[int] = None
+        file_size: Optional[int] = None
         media_error: Optional[str] = None
 
         if media_filter is not None and self._should_download(message, media_filter):
             media_type = self._detect_media_type(message)
-            media_dir  = self._build_media_dir(media_type)   # подпапка по типу
+            media_dir = self._build_media_dir(media_type)  # подпапка по типу
             os.makedirs(media_dir, exist_ok=True)
 
             original_name = self._get_original_filename(message)
@@ -893,7 +893,7 @@ class ParserService:
                 # Фото и файлы без имени — timestamp как раньше (без chat_id:
                 # файлы лежат в папке чата, он избыточен)
                 filename = f"{message.id}_{int(message.date.timestamp())}"
-            target   = os.path.join(media_dir, filename)
+            target = os.path.join(media_dir, filename)
 
             try:
                 media_path = await self._download_media(message, target)
@@ -907,19 +907,19 @@ class ParserService:
                 logger.warning("parser: %s", media_error)
 
         row = {
-            "chat_id":           chat_id,
-            "message_id":        message.id,
-            "topic_id":          effective_topic_id,
-            "user_id":           message.sender_id,
-            "username":          sender_name,
-            "date":              date_str,
-            "text":              text,
-            "media_path":        media_path,
-            "file_type":         media_type,
-            "file_size":         file_size,
-            "reply_to_msg_id":   reply_to_msg_id,
-            "post_id":           post_id,
-            "is_comment":        1 if is_comment else 0,
+            "chat_id": chat_id,
+            "message_id": message.id,
+            "topic_id": effective_topic_id,
+            "user_id": message.sender_id,
+            "username": sender_name,
+            "date": date_str,
+            "text": text,
+            "media_path": media_path,
+            "file_type": media_type,
+            "file_size": file_size,
+            "reply_to_msg_id": reply_to_msg_id,
+            "post_id": post_id,
+            "is_comment": 1 if is_comment else 0,
             "from_linked_group": 1 if from_linked else 0,
         }
         logger.debug("parser: processed msg %d (chat=%d)", message.id, chat_id)
@@ -930,17 +930,17 @@ class ParserService:
     # ------------------------------------------------------------------
 
     @async_retry(
-        max_attempts = _MAX_RETRIES,
-        base_delay   = _RETRY_BASE_DELAY,
-        backoff      = 2.0,
-        exc_retry    = (OSError, RPCError),
-        flood_cls    = TelethonFloodWaitError,
-        flood_buffer = _FLOOD_BUFFER,
+        max_attempts=_MAX_RETRIES,
+        base_delay=_RETRY_BASE_DELAY,
+        backoff=2.0,
+        exc_retry=(OSError, RPCError),
+        flood_cls=TelethonFloodWaitError,
+        flood_buffer=_FLOOD_BUFFER,
     )
     async def _download_media(
-        self,
-        message:     Message,
-        target_path: str,
+            self,
+            message: Message,
+            target_path: str,
     ) -> Optional[str]:
         """
         Скачивает медиа сообщения на диск.
@@ -1024,20 +1024,19 @@ class ParserService:
         )
         return downloaded_path
 
-
     # ------------------------------------------------------------------
     # 4. Комментарии к посту
     # ------------------------------------------------------------------
 
     async def _get_post_replies(
-        self,
-        channel_id:     int,
-        post_id:        int,
-        linked_chat_id: int,
-        media_filter:   Optional[List[str]],
-        topic_id:       Optional[int] = None,
-        limit:          int           = MAX_COMMENT_LIMIT,
-        insert_fn:      Optional[Callable] = None,
+            self,
+            channel_id: int,
+            post_id: int,
+            linked_chat_id: int,
+            media_filter: Optional[List[str]],
+            topic_id: Optional[int] = None,
+            limit: int = MAX_COMMENT_LIMIT,
+            insert_fn: Optional[Callable] = None,
     ) -> int:
         """
         Скачивает комментарии к посту из linked discussion группы.
@@ -1067,18 +1066,18 @@ class ParserService:
         while attempts <= _MAX_RETRIES:
             try:
                 async for comment in self._client.iter_messages(
-                    linked_chat_id,
-                    reply_to=post_id,
-                    limit=limit,
+                        linked_chat_id,
+                        reply_to=post_id,
+                        limit=limit,
                 ):
                     row, media_err = await self._process_message(
-                        message      = comment,
-                        chat_id      = channel_id,   # привязываем к каналу
-                        topic_id     = topic_id,
-                        media_filter = media_filter,
-                        post_id      = post_id,
-                        is_comment   = True,
-                        from_linked  = True,
+                        message=comment,
+                        chat_id=channel_id,  # привязываем к каналу
+                        topic_id=topic_id,
+                        media_filter=media_filter,
+                        post_id=post_id,
+                        is_comment=True,
+                        from_linked=True,
                     )
                     if media_err:
                         logger.debug("parser: comment media err: %s", media_err)
@@ -1089,7 +1088,7 @@ class ParserService:
                 # Batch flush всех комментариев поста
                 if comment_batch:
                     _insert(comment_batch)
-                break   # успешно завершили итерацию
+                break  # успешно завершили итерацию
 
             except TelethonFloodWaitError as exc:
                 wait = exc.seconds + _FLOOD_BUFFER
@@ -1140,7 +1139,7 @@ class ParserService:
             return "photo" in media_filter
 
         if isinstance(message.media, MessageMediaDocument):
-            doc   = message.media.document
+            doc = message.media.document
             attrs = doc.attributes
 
             # Видео (обычное или кружочек)
@@ -1174,7 +1173,7 @@ class ParserService:
             return "photo"
 
         if isinstance(message.media, MessageMediaDocument):
-            doc   = message.media.document
+            doc = message.media.document
             attrs = doc.attributes
 
             video_attrs = [a for a in attrs if isinstance(a, DocumentAttributeVideo)]
@@ -1236,8 +1235,8 @@ class ParserService:
             if username:
                 return username
             first = getattr(sender, "first_name", None) or ""
-            last  = getattr(sender, "last_name",  None) or ""
-            name  = f"{first} {last}".strip()
+            last = getattr(sender, "last_name", None) or ""
+            name = f"{first} {last}".strip()
             return name or "Unknown"
 
         # Channel/Chat sender (анонимный пост от имени канала)
@@ -1267,16 +1266,16 @@ class ParserService:
             False — сообщение отфильтровано (пропускаем).
             True  — при ошибке вычисления (не блокируем парсинг).
         """
-        sender   = getattr(message, "sender", None)
+        sender = getattr(message, "sender", None)
         username = getattr(sender, "username", None) or "" if sender else ""
 
         names = {
-            "text":       message.text or "",
-            "user_id":    message.sender_id,
-            "username":   username,
-            "has_media":  message.media is not None,
+            "text": message.text or "",
+            "user_id": message.sender_id,
+            "username": username,
+            "has_media": message.media is not None,
             "media_type": ParserService._detect_media_type(message),
-            "date":       message.date,
+            "date": message.date,
         }
         try:
             return bool(_simple_eval(expression, names=names))
@@ -1286,9 +1285,9 @@ class ParserService:
 
     @staticmethod
     def _extract_row_sync(
-        message:  Message,
-        chat_id:  int,
-        topic_id: Optional[int],
+            message: Message,
+            chat_id: int,
+            topic_id: Optional[int],
     ) -> dict:
         """
         Быстрое синхронное извлечение полей сообщения без скачивания медиа.
@@ -1297,7 +1296,7 @@ class ParserService:
         Возвращает row-словарь совместимый с insert_messages_batch().
         """
         sender_name = ParserService._get_sender_name(message)
-        date_str    = message.date.strftime("%Y-%m-%d %H:%M:%S") if message.date else ""
+        date_str = message.date.strftime("%Y-%m-%d %H:%M:%S") if message.date else ""
 
         reply_to_msg_id: Optional[int] = None
         if message.reply_to:
@@ -1306,19 +1305,19 @@ class ParserService:
         effective_topic_id = topic_id or ParserService._extract_topic_id(message)
 
         return {
-            "chat_id":           chat_id,
-            "message_id":        message.id,
-            "topic_id":          effective_topic_id,
-            "user_id":           message.sender_id,
-            "username":          sender_name,
-            "date":              date_str,
-            "text":              message.text or "",
-            "media_path":        None,
-            "file_type":         None,
-            "file_size":         None,
-            "reply_to_msg_id":   reply_to_msg_id,
-            "post_id":           None,
-            "is_comment":        0,
+            "chat_id": chat_id,
+            "message_id": message.id,
+            "topic_id": effective_topic_id,
+            "user_id": message.sender_id,
+            "username": sender_name,
+            "date": date_str,
+            "text": message.text or "",
+            "media_path": None,
+            "file_type": None,
+            "file_size": None,
+            "reply_to_msg_id": reply_to_msg_id,
+            "post_id": None,
+            "is_comment": 0,
             "from_linked_group": 0,
         }
 
@@ -1395,7 +1394,7 @@ class ParserService:
         if days_limit <= 0 or days_limit >= DAYS_LIMIT_ALL_TIME:
             return None, "fullchat"
 
-        now        = datetime.now(timezone.utc)
-        cutoff     = now - timedelta(days=days_limit)
-        label      = f"{cutoff.strftime('%Y-%m-%d')}_to_{now.strftime('%Y-%m-%d')}"
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=days_limit)
+        label = f"{cutoff.strftime('%Y-%m-%d')}_to_{now.strftime('%Y-%m-%d')}"
         return cutoff, label

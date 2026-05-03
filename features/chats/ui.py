@@ -1,5 +1,5 @@
 """
-FILE: features/chats/ui.py
+FILE: features/chats/ui.py.
 
 Экран выбора чата + воркеры загрузки.
 
@@ -278,7 +278,7 @@ class LinkedGroupWorker(QThread):
 
 
 class MembersWorker(QThread):
-    """
+    r"""
     Загружает список участников чата через ChatsService.get_user_stats().
 
     Создаёт собственный TelegramClient внутри run().
@@ -557,6 +557,7 @@ class ChatItemWidget(QWidget):
 class SectionHeaderWidget(QWidget):
     """
     Заголовок коллапсируемой секции.
+
     Клик → toggle тела секции. Эмитирует toggled(bool).
     """
 
@@ -642,6 +643,7 @@ class SectionHeaderWidget(QWidget):
 class CollapsibleSection(QWidget):
     """
     Коллапсируемая секция: заголовок + список ChatItemWidget.
+
     Одна секция на тип чата (Каналы / Группы / Форумы / Диалоги).
     """
 
@@ -743,6 +745,7 @@ class CollapsibleSection(QWidget):
 class CollapsibleChatsWidget(QScrollArea):
     """
     QScrollArea с 4 коллапсируемыми секциями чатов.
+
     Группирует входящий список по полю chat["type"].
     """
 
@@ -860,6 +863,7 @@ class ChatsScreen(QWidget):
         Подключение в MainWindow:
             chats_worker.chats_loaded.connect(chats_screen.inject_chats)
         """
+
         self._chats_widget.populate(chats)
         self._status.setText(f"{len(chats)} чатов")
         self._set_loading(False)
@@ -869,11 +873,13 @@ class ChatsScreen(QWidget):
     def inject_topics(self, topics: dict) -> None:
         """
         Слот: принять топики форума от MainWindow после TopicsWorker.
+
         topics = {chat_id: {topic_id: topic_title}}
 
         Подключение в MainWindow:
             topics_worker.topics_loaded.connect(chats_screen.inject_topics)
         """
+
         self._topics.update(topics)
 
         # Определяем chat_id для заполнения комбобокса:
@@ -900,8 +906,10 @@ class ChatsScreen(QWidget):
     def load_chats(self) -> None:
         """
         Обратная совместимость: запрашиваем обновление чатов.
+
         MainWindow слушает refresh_requested и создаёт ChatsWorker.
         """
+
         self._set_loading(True)
         self.refresh_requested.emit()
 
@@ -1103,11 +1111,13 @@ class ChatsScreen(QWidget):
 
     def _on_activated(self, chat: dict) -> None:
         """Двойной клик → сразу подтвердить выбор."""
+
         self._sel_chat = chat
         self._confirm_selection()
 
     def _on_topics_clicked(self, chat_id: int) -> None:
         """Кнопка «ветки» → просим MainWindow загрузить топики."""
+
         self._pending_topics_chat_id = chat_id
         self.log_message.emit("📁 Загружаю ветки форума...")
         self._topics_combo.clear()
@@ -1117,6 +1127,7 @@ class ChatsScreen(QWidget):
 
     def _confirm_selection(self) -> None:
         """Передать выбранный чат в MainWindow через chat_selected(dict)."""
+
         chat = self._sel_chat or self._chats_widget.get_selected_chat()
         if not chat:
             return

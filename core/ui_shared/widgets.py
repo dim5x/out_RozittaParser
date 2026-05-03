@@ -28,10 +28,10 @@ from typing import Optional
 
 from PySide6.QtCore import (
     Qt, Signal, QPropertyAnimation, QEasingCurve,
-    QRect, Property, QObject,
+    QRect, Property,
 )
 from PySide6.QtGui import (
-    QColor, QPainter, QPainterPath, QFont, QLinearGradient,QTextCursor, QIcon,
+    QColor, QPainter, QPainterPath, QFont, QLinearGradient, QTextCursor,
 )
 from PySide6.QtWidgets import (
     QWidget, QFrame, QLabel, QPushButton, QHBoxLayout,
@@ -46,7 +46,7 @@ from core.ui_shared.styles import (
     OVERLAY_HEX, OVERLAY2_HEX, BORDER_HEX,
     COLOR_SUCCESS, COLOR_ERROR, COLOR_WARNING,
     # Размеры
-    RADIUS_LG, RADIUS_MD, RADIUS_XS,
+    RADIUS_LG, RADIUS_MD,
     FONT_FAMILY, FONT_SIZE_H1, FONT_SIZE_BODY,
     FONT_SIZE_SMALL, FONT_SIZE_XS,
     # QSS блоки
@@ -88,6 +88,7 @@ def _font(size: int, weight: int = QFont.Weight.Normal) -> QFont:
 class PasswordLineEdit(QWidget):
     """
     Поле ввода пароля с кнопкой показа/скрытия (иконка глаза).
+
     Эмитирует textChanged(str) — как стандартный QLineEdit.
 
     Пример:
@@ -130,7 +131,7 @@ class PasswordLineEdit(QWidget):
         self._toggle_btn.toggled.connect(self._on_toggle)
 
         # Кнопку накладываем поверх поля через отступ справа в LineEdit
-        self._edit.setStyleSheet(QSS_INPUT + f"""
+        self._edit.setStyleSheet(QSS_INPUT + """
             QLineEdit {{ padding-right: 36px; }}
         """)
 
@@ -213,12 +214,12 @@ class SectionTitle(QWidget):
     """
 
     def __init__(
-        self,
-        icon: str,
-        text: str,
-        desc: str = "",
-        accent: bool = False,
-        parent: Optional[QWidget] = None,
+            self,
+            icon: str,
+            text: str,
+            desc: str = "",
+            accent: bool = False,
+            parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         layout = QHBoxLayout(self)
@@ -293,7 +294,7 @@ class ToggleSwitch(QWidget):
 
     _TRACK_W = 40
     _TRACK_H = 20
-    _KNOB_D  = 16   # диаметр кружка
+    _KNOB_D = 16  # диаметр кружка
 
     def __init__(self, checked: bool = False, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -380,12 +381,12 @@ class MediaButton(QPushButton):
     """
 
     def __init__(
-        self,
-        icon: str,
-        label: str,
-        media_type: str = "",
-        active: bool = True,
-        parent: Optional[QWidget] = None,
+            self,
+            icon: str,
+            label: str,
+            media_type: str = "",
+            active: bool = True,
+            parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._media_type = media_type
@@ -484,12 +485,12 @@ class ChipButton(QWidget):
     toggled = Signal(bool)
 
     def __init__(
-        self,
-        icon: str,
-        label: str,
-        media_type: str = "",
-        active: bool = True,
-        parent: Optional[QWidget] = None,
+            self,
+            icon: str,
+            label: str,
+            media_type: str = "",
+            active: bool = True,
+            parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._active = active
@@ -579,12 +580,12 @@ class SplitModeButton(QPushButton):
     """
 
     def __init__(
-        self,
-        icon: str,
-        label: str,
-        mode: str,
-        active: bool = False,
-        parent: Optional[QWidget] = None,
+            self,
+            icon: str,
+            label: str,
+            mode: str,
+            active: bool = False,
+            parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._mode = mode
@@ -684,12 +685,12 @@ class UserTag(QPushButton):
     """
 
     def __init__(
-        self,
-        username: str,
-        user_id: int = 0,
-        is_all: bool = False,
-        selected: bool = False,
-        parent: Optional[QWidget] = None,
+            self,
+            username: str,
+            user_id: int = 0,
+            is_all: bool = False,
+            selected: bool = False,
+            parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._user_id = user_id
@@ -763,9 +764,9 @@ class StepperWidget(QWidget):
     ]
 
     def __init__(
-        self,
-        steps: Optional[list[str]] = None,
-        parent: Optional[QWidget] = None,
+            self,
+            steps: Optional[list[str]] = None,
+            parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._active_index: int = 0
@@ -854,7 +855,7 @@ class HeaderBar(QWidget):
             "<span style='"
             f"font-size:{FONT_SIZE_H1}px; font-weight:600;"
             " background: transparent;"
-            f"color:{ACCENT_ORANGE};"   # fallback — Qt не поддерживает gradient text
+            f"color:{ACCENT_ORANGE};"  # fallback — Qt не поддерживает gradient text
             "'>Rozitta Parser</span>"
         )
         self._logo.setTextFormat(Qt.TextFormat.RichText)
@@ -867,7 +868,7 @@ class HeaderBar(QWidget):
         layout.addWidget(self.stepper)
 
     def set_step(self, index: int) -> None:
-        """Shortcut: header.set_step(2)"""
+        """Shortcut: header.set_step(2)."""
         self.stepper.set_active(index)
 
 
@@ -893,11 +894,11 @@ class RozittaWidget(QWidget):
 
     # Цвета рамки по состоянию
     _STATE_COLORS: dict[str, str] = {
-        "idle":    ACCENT_PINK,
+        "idle": ACCENT_PINK,
         "success": COLOR_SUCCESS,
-        "error":   COLOR_ERROR,
+        "error": COLOR_ERROR,
         "warning": COLOR_WARNING,
-        "auth":    ACCENT_ORANGE,
+        "auth": ACCENT_ORANGE,
         "process": ACCENT_ORANGE,
     }
 
@@ -1056,7 +1057,6 @@ class _AvatarFrame(QWidget):
 
         # Контент: изображение или emoji
         if self._pixmap and not self._pixmap.isNull():
-            from PySide6.QtGui import QPixmap
             scaled = self._pixmap.scaled(
                 int(w - 6), int(h - 6),
                 Qt.AspectRatioMode.KeepAspectRatioByExpanding,
@@ -1107,10 +1107,10 @@ class LogWidget(QWidget):
 
     # HTML-цвета по уровню
     _LEVEL_COLORS = {
-        "info":    TEXT_PRIMARY,
+        "info": TEXT_PRIMARY,
         "success": COLOR_SUCCESS,
         "warning": COLOR_WARNING,
-        "error":   COLOR_ERROR,
+        "error": COLOR_ERROR,
     }
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -1130,11 +1130,11 @@ class LogWidget(QWidget):
 
         self._filter_btns: list[FilterButton] = []
         filters = [
-            ("Все",    "all",     "Показать всё"),
-            ("Инфо",   "info",    "Информация"),
-            ("Успех",  "success", "Успешные"),
-            ("Пред.",  "warning", "Предупреждения"),
-            ("Ошиб.",  "error",   "Ошибки"),
+            ("Все", "all", "Показать всё"),
+            ("Инфо", "info", "Информация"),
+            ("Успех", "success", "Успешные"),
+            ("Пред.", "warning", "Предупреждения"),
+            ("Ошиб.", "error", "Ошибки"),
         ]
         for label, key, tip in filters:
             btn = FilterButton(label, key)
@@ -1186,10 +1186,17 @@ class LogWidget(QWidget):
         if self._current_filter in ("all", level):
             self._render_entry(ts, text, level)
 
-    def append_info(self, text: str)    -> None: self.append(text, "info")
-    def append_success(self, text: str) -> None: self.append(text, "success")
-    def append_warning(self, text: str) -> None: self.append(text, "warning")
-    def append_error(self, text: str)   -> None: self.append(text, "error")
+    def append_info(self, text: str) -> None:
+        self.append(text, "info")
+
+    def append_success(self, text: str) -> None:
+        self.append(text, "success")
+
+    def append_warning(self, text: str) -> None:
+        self.append(text, "warning")
+
+    def append_error(self, text: str) -> None:
+        self.append(text, "error")
 
     def clear(self) -> None:
         self._all_entries.clear()

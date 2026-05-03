@@ -1,5 +1,5 @@
 """
-core/logger.py — Настройка логирования Rozitta Parser
+core/logger.py — Настройка логирования Rozitta Parser.
 
 Предоставляет единую точку настройки: вызови setup_logging() один раз
 в main.py — и все модули через logging.getLogger(__name__) сразу получат
@@ -29,21 +29,18 @@ from __future__ import annotations
 import logging
 import logging.handlers
 import sys
-import warnings
 from pathlib import Path
 from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Константы
 # ---------------------------------------------------------------------------
 
-DEFAULT_LOG_FILE    = "rozitta_parser.log"
-DEFAULT_MAX_BYTES   = 5 * 1024 * 1024   # 5 MB на файл
-DEFAULT_BACKUP_COUNT = 3                  # хранить 3 ротированных файла
+DEFAULT_LOG_FILE = "rozitta_parser.log"
+DEFAULT_MAX_BYTES = 5 * 1024 * 1024  # 5 MB на файл
+DEFAULT_BACKUP_COUNT = 3  # хранить 3 ротированных файла
 # ROOT_LOGGER_NAME    = "rozitta"          # корневой логгер проекта
-ROOT_LOGGER_NAME    = ""          # корневой логгер проекта
-
+ROOT_LOGGER_NAME = ""  # корневой логгер проекта
 
 # ---------------------------------------------------------------------------
 # ANSI-коды для цветного вывода в консоль
@@ -65,15 +62,18 @@ _LEVEL_COLORS: dict[int, str] = {
 # ---------------------------------------------------------------------------
 
 QWAQ = 55
-logging.addLevelName(QWAQ, "QWAQ") # Регистрируем имя
+logging.addLevelName(QWAQ, "QWAQ")  # Регистрируем имя
+
 
 def qwaq(self, msg, *args, **kwargs):
     if self.isEnabledFor(QWAQ):
         self._log(QWAQ, msg, args, **kwargs)
 
+
 _LEVEL_COLORS[QWAQ] = "\033[1;4;35m"  # розовый подчёркнутый жирный текст
 
-logging.Logger.qwaq = qwaq # Патчим Logger
+logging.Logger.qwaq = qwaq  # Патчим Logger
+
 
 # ---------------------------------------------------------------------------
 # Кастомные форматтеры
@@ -177,7 +177,7 @@ def setup_logging(
         return root_logger
 
     # numeric_level = _to_int_level(level)
-    root_logger.setLevel(logging.DEBUG)   # корневой = всё; хэндлеры фильтруют
+    root_logger.setLevel(logging.DEBUG)  # корневой = всё; хэндлеры фильтруют
 
     # --- Консольный хэндлер ---
     if console:

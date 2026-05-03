@@ -1,5 +1,5 @@
 """
-FILE: ui/main_window.py
+FILE: ui/main_window.py.
 
 MainWindow v4.0 — Redesign (tabs + right panel).
 
@@ -82,6 +82,7 @@ class NavButton(QFrame):
     Layout: [●num] [text]
     States: 'default' | 'active' | 'done'
     """
+
     clicked = Signal()
 
     def __init__(self, num: int, text: str, parent=None):
@@ -208,6 +209,7 @@ class StatusPill(QFrame):
     Пилюля статуса в хедере: [●dot] [text]
     States: 'offline' | 'online' | 'busy'
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._build()
@@ -261,6 +263,7 @@ class ToastWidget(QWidget):
     Всплывающее уведомление. Автоматически исчезает через duration мс.
     Тип: 'info' | 'success' | 'warning' | 'error'
     """
+
     _ICONS = {"success": "✓", "error": "✕", "warning": "⚠", "info": "ℹ"}
     _COLORS = {
         "success": COLOR_SUCCESS,
@@ -352,6 +355,7 @@ class SettingsPanel(QWidget):
 
     def _restore_from_cfg(self, cfg) -> None:
         """Восстанавливает последние настройки из AppConfig после сборки UI."""
+
         # Режим разбивки
         if cfg.split_mode and cfg.split_mode != "none":
             for btn in self._split_buttons:
@@ -508,8 +512,8 @@ class SettingsPanel(QWidget):
         chips_row = QHBoxLayout()
         chips_row.setSpacing(8)
 
-        self._stt_voice = ChipButton("🎤", "Голосовые",  "voice",       True)
-        self._stt_round = ChipButton("📹", "Кружочки",   "video_note",  True)
+        self._stt_voice = ChipButton("🎤", "Голосовые", "voice", True)
+        self._stt_round = ChipButton("📹", "Кружочки", "video_note", True)
 
         chips_row.addWidget(self._stt_voice)
         chips_row.addWidget(self._stt_round)
@@ -596,6 +600,30 @@ class SettingsPanel(QWidget):
         """)
         self._load_members_btn.clicked.connect(self._on_load_members_clicked)
         layout.addWidget(self._load_members_btn)
+
+        # Кнопка сохранения списка пользователей
+        self._export_members_btn = QPushButton("👥  Экспортировать список (DOCX)")
+        self._export_members_btn.setEnabled(False)
+        self._export_members_btn.setFixedHeight(34)
+        self._export_members_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._export_members_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {OVERLAY2_HEX};
+                border: 1px solid {BORDER_HEX};
+                border-radius: {RADIUS_MD}px;
+                color: {TEXT_SECONDARY};
+                font-size: 12px;
+            }}
+            QPushButton:hover:enabled {{
+                background-color: {OVERLAY_HEX};
+                color: {TEXT_PRIMARY};
+            }}
+            QPushButton:disabled {{
+                color: rgba(255,255,255,0.25);
+            }}
+        """)
+        self._export_members_btn.clicked.connect(self._on_export_members_clicked)
+        layout.addWidget(self._export_members_btn)
 
         # Контейнер тегов (прокручиваемый)
         self._tags_scroll = QScrollArea()
@@ -695,7 +723,7 @@ class SettingsPanel(QWidget):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(_chip_qss)
 
-        self._fmt_docx.setChecked(True)   # По умолчанию только DOCX
+        self._fmt_docx.setChecked(True)  # По умолчанию только DOCX
 
         chips_row.addWidget(self._fmt_docx)
         chips_row.addWidget(self._fmt_json)
@@ -729,7 +757,7 @@ class SettingsPanel(QWidget):
         self._ai_chunk_spin.setFixedWidth(110)
         self._ai_chunk_spin.setFixedHeight(28)
         self._ai_chunk_spin.setStyleSheet(QSS_INPUT)
-        self._ai_chunk_spin.setEnabled(False)   # заблокирован пока тоггл выкл
+        self._ai_chunk_spin.setEnabled(False)  # заблокирован пока тоггл выкл
         chunk_row.addSpacing(4)
         chunk_row.addWidget(chunk_lbl)
         chunk_row.addWidget(self._ai_chunk_spin)
@@ -751,6 +779,7 @@ class SettingsPanel(QWidget):
 
     def get_export_formats(self) -> list:
         """Возвращает список активных форматов экспорта. Минимум один — docx."""
+
         fmt = []
         if self._fmt_docx.isChecked():
             fmt.append("docx")
@@ -760,26 +789,28 @@ class SettingsPanel(QWidget):
             fmt.append("md")
         if self._fmt_html.isChecked():
             fmt.append("html")
-        return fmt or ["docx"]   # fallback
+        return fmt or ["docx"]  # fallback
 
     def get_ai_split(self) -> bool:
         """Возвращает состояние чекбокса 'Адаптировать для ИИ'."""
+
         return self._toggle_ai_split.isChecked()
 
     def get_ai_split_chunk_words(self) -> int:
         """Возвращает размер AI-чанка в словах."""
+
         return self._ai_chunk_spin.value()
 
     def _build_options_section(self) -> ModernCard:
         card, layout = self._card()
         layout.addWidget(SectionTitle("⚙️", "Параметры"))
 
-        self._toggle_comments   = ToggleSwitch(checked=False)
+        self._toggle_comments = ToggleSwitch(checked=False)
         self._toggle_redownload = ToggleSwitch(checked=False)
-        self._toggle_takeout    = ToggleSwitch(checked=False)
+        self._toggle_takeout = ToggleSwitch(checked=False)
 
         layout.addLayout(self._option_row("Включить комментарии", self._toggle_comments))
-        layout.addLayout(self._option_row("Перекачать медиа",    self._toggle_redownload))
+        layout.addLayout(self._option_row("Перекачать медиа", self._toggle_redownload))
         layout.addLayout(self._option_row("⚡ Takeout API (быстрее при VPN)", self._toggle_takeout))
         return card
 
@@ -801,6 +832,15 @@ class SettingsPanel(QWidget):
         if self._current_chat:
             self.load_members_requested.emit(self._current_chat)
 
+            self._export_members_btn.setEnabled(True)
+
+    def _on_export_members_clicked(self) -> None:
+        from features.export.participants import export_participants_docx
+        users = self._members_cache
+        title = self._current_chat['title']
+        filepath= export_participants_docx(users, title, f'./output/{title}')
+
+        self.log_message.emit(f"Экспортировано {len(users)} участников => {filepath}")
     # ──────────────────────────────────────────────────────────────────────
     # ПУБЛИЧНЫЙ API (совместим с ParseSettingsScreen)
     # ──────────────────────────────────────────────────────────────────────
@@ -813,6 +853,7 @@ class SettingsPanel(QWidget):
         self._load_members_btn.setEnabled(True)
 
     def populate_members(self, users: list[dict]) -> None:
+        self._members_cache = users.copy()
         # Очистить старые теги
         self._user_tags.clear()
         while self._tags_layout.count():
@@ -827,7 +868,7 @@ class SettingsPanel(QWidget):
 
         # Теги участников
         for user in users:
-            uid  = user.get("id", 0)
+            uid = user.get("id", 0)
             name = user.get("name", str(uid))
             tag = UserTag(name, user_id=uid, is_all=False, selected=False)
             self._tags_layout.addWidget(tag)
@@ -854,7 +895,7 @@ class SettingsPanel(QWidget):
 
         # Даты
         date_from = None
-        date_to   = None
+        date_to = None
         start_dt, end_dt = self._date_widget.get_date_range()
         if start_dt is not None:
             date_from = start_dt.date()
@@ -1243,13 +1284,13 @@ class MainWindow(QMainWindow):
         self._rozetta = RozittaWidget()
         # Загружаем аватар персонажа. Ищем сначала в assets/, потом в корне приложения.
         import os as _os
-        _base = _os.path.dirname(_os.path.abspath(__file__))   # папка ui/
-        _app_root = _os.path.dirname(_base)                    # корень приложения
+        _base = _os.path.dirname(_os.path.abspath(__file__))  # папка ui/
+        _app_root = _os.path.dirname(_base)  # корень приложения
         for _candidate in (
-            _os.path.join(_app_root, "assets", "rozitta_idle.png"),
-            _os.path.join(_app_root, "rozitta_idle.png"),
-            "assets/rozitta_idle.png",
-            "rozitta_idle.png",
+                _os.path.join(_app_root, "assets", "rozitta_idle.png"),
+                _os.path.join(_app_root, "rozitta_idle.png"),
+                "assets/rozitta_idle.png",
+                "rozitta_idle.png",
         ):
             if _os.path.exists(_candidate):
                 self._rozetta.set_image_path(_candidate)
@@ -1440,11 +1481,13 @@ class MainWindow(QMainWindow):
 
     def _on_nav_clicked(self, index: int) -> None:
         """Клик по NavBtn — переключить вкладку, если она уже достигнута."""
+
         if index <= self._current_step:
             self._switch_tab(index)
 
     def _switch_tab(self, index: int) -> None:
         """Переключить QStackedWidget + обновить NavBtn без смены _current_step."""
+
         self._stack.setCurrentIndex(index)
         nav_btns = [self._nav_auth, self._nav_chats, self._nav_settings]
         for i, btn in enumerate(nav_btns):
@@ -1463,6 +1506,7 @@ class MainWindow(QMainWindow):
           2 — Settings active (Auth + Chats done)
           3 — Все done (парсинг завершён)
         """
+
         self._current_step = index
         tab_index = min(index, 2)
         self._stack.setCurrentIndex(tab_index)
@@ -1482,6 +1526,7 @@ class MainWindow(QMainWindow):
 
     def _set_status(self, state: str, text: str) -> None:
         """Обновить StatusPill в хедере. state: 'offline'|'online'|'busy'"""
+
         self._status_pill.set_status(state, text)
 
     # ──────────────────────────────────────────────────────────────────────
@@ -1491,6 +1536,7 @@ class MainWindow(QMainWindow):
     def _show_toast(self, message: str, toast_type: str = "info",
                     duration: int = 3200) -> None:
         """Показать всплывающее уведомление в правом верхнем углу."""
+
         toast = ToastWidget(message, toast_type, duration,
                             parent=self.centralWidget())
         toast.adjustSize()
@@ -1523,6 +1569,7 @@ class MainWindow(QMainWindow):
         AuthWorker завершил авторизацию.
         auth_complete = Signal(object, object) → (TelegramClient | None, User | None).
         """
+
         if user is None:
             return
 
@@ -1552,9 +1599,9 @@ class MainWindow(QMainWindow):
         self._rozetta.set_state("process")
         self._rozetta.set_tip("Выхожу...")
         worker = LogoutWorker(self._cfg)
-        worker.log_message.connect(self._log.append_info,    Qt.UniqueConnection)
-        worker.logout_done.connect(self._on_logout_done,     Qt.UniqueConnection)
-        worker.error.connect(self._on_logout_error,          Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
+        worker.logout_done.connect(self._on_logout_done, Qt.UniqueConnection)
+        worker.error.connect(self._on_logout_error, Qt.UniqueConnection)
         self._start_worker(worker)
 
     def _on_logout_done(self) -> None:
@@ -1564,7 +1611,7 @@ class MainWindow(QMainWindow):
         self._rozetta.set_state("idle")
         self._rozetta.set_tip("")
         self._sidebar_chat_name.setText("не выбран")
-        self._auth_screen.reset()   # разблокировать форму и кнопку "Войти"
+        self._auth_screen.reset()  # разблокировать форму и кнопку "Войти"
         self._set_step(0)
         self._log.append_success("✅ Выход выполнен. Авторизуйтесь снова.")
         self._show_toast("Выход выполнен", "success")
@@ -1582,10 +1629,10 @@ class MainWindow(QMainWindow):
     def _load_chats(self, force_refresh: bool = False) -> None:
         from features.chats.ui import ChatsWorker
         worker = ChatsWorker(self._cfg, force_refresh=force_refresh)
-        worker.chats_loaded.connect(self._on_chats_loaded,       Qt.UniqueConnection)
-        worker.log_message.connect(self._log.append_info,        Qt.UniqueConnection)
-        worker.error.connect(self._on_worker_error,              Qt.UniqueConnection)
-        worker.character_state.connect(self._rozetta.set_state,  Qt.UniqueConnection)
+        worker.chats_loaded.connect(self._on_chats_loaded, Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
+        worker.error.connect(self._on_worker_error, Qt.UniqueConnection)
+        worker.character_state.connect(self._rozetta.set_state, Qt.UniqueConnection)
         self._start_worker(worker)
         self._rozetta.set_state("process")
         self._rozetta.set_tip("Загружаю список чатов...")
@@ -1615,7 +1662,7 @@ class MainWindow(QMainWindow):
             from features.chats.ui import LinkedGroupWorker
             lw = LinkedGroupWorker(chat, self._cfg)
             lw.linked_found.connect(self._on_linked_group_found, Qt.UniqueConnection)
-            lw.log_message.connect(self._log.append_info,        Qt.UniqueConnection)
+            lw.log_message.connect(self._log.append_info, Qt.UniqueConnection)
             self._start_worker(lw)
 
     def _on_linked_group_found(self, updated_chat: dict) -> None:
@@ -1631,9 +1678,9 @@ class MainWindow(QMainWindow):
         chat_id = int(chat_id)
         from features.chats.ui import TopicsWorker
         worker = TopicsWorker(chat_id, self._cfg)
-        worker.topics_loaded.connect(self._on_topics_loaded,  Qt.UniqueConnection)
-        worker.log_message.connect(self._log.append_info,     Qt.UniqueConnection)
-        worker.error.connect(self._on_worker_error,           Qt.UniqueConnection)
+        worker.topics_loaded.connect(self._on_topics_loaded, Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
+        worker.error.connect(self._on_worker_error, Qt.UniqueConnection)
         self._start_worker(worker)
         self._rozetta.set_tip("Загружаю ветки форума...")
 
@@ -1650,8 +1697,8 @@ class MainWindow(QMainWindow):
         from features.chats.ui import MembersWorker
         worker = MembersWorker(chat, self._cfg)
         worker.members_loaded.connect(self._settings_screen.populate_members, Qt.UniqueConnection)
-        worker.log_message.connect(self._log.append_info,                     Qt.UniqueConnection)
-        worker.error.connect(self._on_worker_error,                           Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
+        worker.error.connect(self._on_worker_error, Qt.UniqueConnection)
         self._start_worker(worker)
         self._rozetta.set_tip("Загружаю участников...")
 
@@ -1661,6 +1708,7 @@ class MainWindow(QMainWindow):
 
     def _on_start_btn_clicked(self) -> None:
         """Кнопка НАЧАТЬ ПАРСИНГ в правой панели."""
+
         params = self._settings_screen.get_params()
         if params is None:
             self._show_toast("Выберите чат перед запуском", "error")
@@ -1689,7 +1737,7 @@ class MainWindow(QMainWindow):
                 media_keys.append("photo")
             if getattr(sp, "_media_video", None) and sp._media_video.isChecked():
                 media_keys.append("video")
-            if getattr(sp, "_media_file",  None) and sp._media_file.isChecked():
+            if getattr(sp, "_media_file", None) and sp._media_file.isChecked():
                 media_keys.append("file")
             if getattr(sp, "_media_voice", None) and sp._media_voice.isChecked():
                 media_keys.append("voice")
@@ -1707,7 +1755,7 @@ class MainWindow(QMainWindow):
             if isinstance(w, (_ChatsWorker, _TopicsWorker)) and w.isRunning():
                 name = type(w).__name__
                 self._log.append_info(f"⏳ Жду завершения {name} перед парсингом...")
-                w.wait(30_000)   # max 30 сек (загрузка чатов может быть долгой)
+                w.wait(30_000)  # max 30 сек (загрузка чатов может быть долгой)
 
         self._update_progress(0)
         self._start_btn.setEnabled(False)
@@ -1723,11 +1771,11 @@ class MainWindow(QMainWindow):
 
     def _start_parse_worker(self, params: ParseParams) -> None:
         worker = ParseWorker(params, self._cfg)
-        worker.log_message.connect(self._log.append_info,        Qt.UniqueConnection)
-        worker.progress.connect(self._update_progress,           Qt.UniqueConnection)
-        worker.finished.connect(self._on_parse_finished,         Qt.UniqueConnection)
-        worker.error.connect(self._on_parse_error,               Qt.UniqueConnection)
-        worker.character_state.connect(self._rozetta.set_state,  Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
+        worker.progress.connect(self._update_progress, Qt.UniqueConnection)
+        worker.finished.connect(self._on_parse_finished, Qt.UniqueConnection)
+        worker.error.connect(self._on_parse_error, Qt.UniqueConnection)
+        worker.character_state.connect(self._rozetta.set_state, Qt.UniqueConnection)
         self._start_worker(worker)
 
     def _on_parse_finished(self, result) -> None:
@@ -1778,7 +1826,7 @@ class MainWindow(QMainWindow):
         if not db_path:
             chat_title = getattr(collect_result, "chat_title", "") or ""
             chat_dir = os.path.join(str(self._cfg.output_dir), sanitize_filename(chat_title))
-            db_path  = os.path.join(chat_dir, DB_FILENAME)
+            db_path = os.path.join(chat_dir, DB_FILENAME)
 
         self._last_collect_result = collect_result
         self._update_progress(0)
@@ -1788,14 +1836,15 @@ class MainWindow(QMainWindow):
             model_size=self._cfg.stt_model,
             language=self._cfg.stt_language,
         )
-        worker.log_message.connect(self._log.append_info,          Qt.UniqueConnection)
-        worker.progress.connect(self._update_progress,             Qt.UniqueConnection)
-        worker.error.connect(self._on_stt_error,                   Qt.UniqueConnection)
-        worker.finished.connect(self._on_stt_finished_slot,        Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
+        worker.progress.connect(self._update_progress, Qt.UniqueConnection)
+        worker.error.connect(self._on_stt_error, Qt.UniqueConnection)
+        worker.finished.connect(self._on_stt_finished_slot, Qt.UniqueConnection)
         self._start_worker(worker)
 
     def _on_stt_finished_slot(self) -> None:
         """Именованный слот для STTWorker.finished (Qt.UniqueConnection требует не-лямбду)."""
+
         self._on_stt_finished(self._last_collect_result)
 
     def _on_stt_finished(self, collect_result) -> None:
@@ -1837,20 +1886,20 @@ class MainWindow(QMainWindow):
 
         chat = self._settings_screen._current_chat or {}
         params = self._settings_screen.get_params()
-        split_mode    = params.split_mode  if params else "none"
+        split_mode = params.split_mode if params else "none"
         date_from_str = str(params.date_from) if (params and params.date_from) else None
-        date_to_str   = str(params.date_to)   if (params and params.date_to)   else None
+        date_to_str = str(params.date_to) if (params and params.date_to) else None
 
         chat_title = (
-            getattr(collect_result, "chat_title", None)
-            or chat.get("title", "export")
+                getattr(collect_result, "chat_title", None)
+                or chat.get("title", "export")
         )
         db_path = getattr(collect_result, "db_path", "") or ""
         if db_path:
             chat_dir = os.path.dirname(db_path)
         else:
             chat_dir = os.path.join(str(self._cfg.output_dir), sanitize_filename(chat_title))
-            db_path  = os.path.join(chat_dir, DB_FILENAME)
+            db_path = os.path.join(chat_dir, DB_FILENAME)
 
         export_params = ExportParams(
             chat_id=chat.get("id"),
@@ -1869,10 +1918,10 @@ class MainWindow(QMainWindow):
         )
 
         worker = ExportWorker(export_params)
-        worker.log_message.connect(self._log.append_info,        Qt.UniqueConnection)
+        worker.log_message.connect(self._log.append_info, Qt.UniqueConnection)
         worker.export_complete.connect(self._on_export_complete, Qt.UniqueConnection)
-        worker.error.connect(self._on_export_error,              Qt.UniqueConnection)
-        worker.character_state.connect(self._rozetta.set_state,  Qt.UniqueConnection)
+        worker.error.connect(self._on_export_error, Qt.UniqueConnection)
+        worker.character_state.connect(self._rozetta.set_state, Qt.UniqueConnection)
         self._start_worker(worker)
 
     def _on_export_complete(self, paths: list) -> None:

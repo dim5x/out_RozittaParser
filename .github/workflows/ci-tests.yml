@@ -1,0 +1,52 @@
+name: Tests
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            xvfb: true
+          - os: windows-latest
+            xvfb: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov pytest-timeout PySide6
+
+      - name: Run tests (Linux + Xvfb)
+        if: matrix.xvfb
+        uses: coactions/setup-xvfb@v1
+        with:
+          run: pytest tests/ --tb=short -q
+
+      - name: Run tests (Windows)
+        if: "!matrix.xvfb"
+        run: pytest tests/ --tb=short -q
+
+      - name: Coverage report
+        if: always()
+        run: pytest tests/ --cov=. --cov-report=term-missing --tb=no -q || true

@@ -63,9 +63,6 @@ class TestCombineStyles:
 
     def test_combine_preserves_order(self):
         result = styles.combine_styles("button", "button_primary")
-        button_part = result.find("QPushButton")
-        primary_part = result.find("button_primary") if "button_primary" in result else -1
-        # Обе строки содержат QPushButton, первая часть идёт раньше
         assert "QPushButton" in result
 
 

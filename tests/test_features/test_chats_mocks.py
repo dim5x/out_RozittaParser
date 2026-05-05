@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from telethon.tl.types import Channel, Chat, User, ChatPhotoEmpty
 
-from features.chats.api import ChatsService, classify_entity
+from features.chats.api import ChatsService
 from core.exceptions import ChatNotFoundError, TelegramError
 
 

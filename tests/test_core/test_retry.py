@@ -3,7 +3,6 @@ tests/test_core/test_retry.py
 
 Тесты: @async_retry — retry, backoff, FloodWait, edge cases.
 """
-import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch
 from core.retry import async_retry

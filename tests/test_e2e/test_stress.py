@@ -77,7 +77,7 @@ class TestExportStress:
     @pytest.mark.slow
     def test_json_export_10k(self, tmp_path):
         db = DBManager(str(tmp_path / "stress.db"))
-        msgs = [_msg(i, text=f"Word " * 50) for i in range(10_000)]
+        msgs = [_msg(i, text="Word " * 50) for i in range(10_000)]
         db.insert_messages_batch(msgs)
 
         gen = JsonGenerator(db=db, output_dir=str(tmp_path))
@@ -91,7 +91,7 @@ class TestExportStress:
     @pytest.mark.slow
     def test_md_export_10k(self, tmp_path):
         db = DBManager(str(tmp_path / "stress_md.db"))
-        msgs = [_msg(i, text=f"Word " * 50) for i in range(10_000)]
+        msgs = [_msg(i, text="Word " * 50) for i in range(10_000)]
         db.insert_messages_batch(msgs)
 
         gen = MarkdownGenerator(db=db, output_dir=str(tmp_path))

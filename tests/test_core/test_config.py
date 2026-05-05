@@ -6,7 +6,7 @@ tests/test_core/test_config.py
 import json
 import os
 import pytest
-from config import AppConfig, load_config, save_config, CONFIG_FILE, DAYS_LIMIT_ALL_TIME
+from config import AppConfig, load_config, save_config, DAYS_LIMIT_ALL_TIME
 from core.exceptions import ConfigError
 
 

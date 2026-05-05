@@ -3,7 +3,6 @@ tests/test_features/test_chats_static.py
 
 Тесты: classify_entity — классификация Telethon-сущностей.
 """
-import pytest
 from features.chats.api import classify_entity
 from telethon.tl.types import User, Chat, Channel
 

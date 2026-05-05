@@ -5,7 +5,7 @@ tests/test_core/test_stt_worker.py
 Требует QApplication (PySide6) для работы QThread signals.
 """
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 from core.exceptions import STTError
 

@@ -5,8 +5,6 @@ tests/test_e2e/test_security.py
 """
 import json
 
-import pytest
-
 from core.database import DBManager
 from core.utils import sanitize_filename
 from features.export.generator import HtmlGenerator

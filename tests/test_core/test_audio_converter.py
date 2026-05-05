@@ -4,11 +4,10 @@ tests/test_core/test_audio_converter.py
 Тесты: AudioConverter.convert_to_wav / cleanup.
 Все внешние вызовы (subprocess, os, tempfile) мокаются.
 """
-import os
 import subprocess
 
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 from core.stt.audio_converter import AudioConverter
 from core.exceptions import STTError

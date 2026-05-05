@@ -3,7 +3,6 @@ tests/test_features/test_auth_static.py
 
 Тесты: AuthService.parse_proxy_link, AuthService.detect_tdata_path.
 """
-import pytest
 from features.auth.api import AuthService
 
 

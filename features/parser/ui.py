@@ -28,7 +28,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from PySide6.QtCore import (
@@ -936,7 +936,6 @@ class ParseWorker(QThread):
         """Преобразует ParseParams (UI) → CollectParams (API)."""
 
         from features.parser.api import CollectParams
-        from datetime import datetime, timezone
 
         p = self._params
 

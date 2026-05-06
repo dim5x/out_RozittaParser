@@ -82,6 +82,7 @@ class ExportParams:
     period_label:     str           = "fullchat"
     split_mode:       str           = "none"
     topic_id:         Optional[int] = None
+    topic_name:       Optional[str] = None
     user_id:          Optional[int] = None
     include_comments: bool          = False
     output_dir:       str           = "output"
@@ -178,6 +179,7 @@ class ExportWorker(QThread):
                         chat_title       = p.chat_title,
                         split_mode       = p.split_mode,
                         topic_id         = p.topic_id,
+                        topic_name       = p.topic_name,
                         user_id          = p.user_id,
                         include_comments = p.include_comments,
                         period_label     = p.period_label,
@@ -194,6 +196,7 @@ class ExportWorker(QThread):
                         chat_id          = p.chat_id,
                         chat_title       = p.chat_title,
                         topic_id         = p.topic_id,
+                        topic_name       = p.topic_name,
                         user_id          = p.user_id,
                         include_comments = p.include_comments,
                         ai_split         = p.ai_split,
@@ -212,6 +215,7 @@ class ExportWorker(QThread):
                         chat_id          = p.chat_id,
                         chat_title       = p.chat_title,
                         topic_id         = p.topic_id,
+                        topic_name       = p.topic_name,
                         user_id          = p.user_id,
                         include_comments = p.include_comments,
                         ai_split         = p.ai_split,
@@ -230,6 +234,7 @@ class ExportWorker(QThread):
                         chat_id              = p.chat_id,
                         chat_title           = p.chat_title,
                         topic_id             = p.topic_id,
+                        topic_name           = p.topic_name,
                         user_id              = p.user_id,
                         include_comments     = p.include_comments,
                         ai_split             = p.ai_split,

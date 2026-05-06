@@ -242,6 +242,7 @@ class DBManager:
 
     def _ensure_schema(self) -> None:
         """Создаёт таблицы и индексы (идемпотентно, один раз)."""
+
         with self._init_lock:
             if self._initialized:
                 return

@@ -1135,8 +1135,10 @@ class ChatsScreen(QWidget):
         # Для форума добавляем выбранный топик
         if chat.get("type") == "forum":
             topic_id = self._topics_combo.currentData()
+            topic_name = self._topics_combo.currentText()  # <-- имя из UI
             chat = dict(chat)  # не мутируем оригинал
             chat["selected_topic_id"] = topic_id
+            chat["selected_topic_name"] = None if topic_id is None else topic_name
 
         self.log_message.emit(f"✅ Выбран: {chat.get('title', '?')}")
         self.chat_selected.emit(chat)

@@ -16,7 +16,7 @@ core/stt/worker.py — STTWorker: QThread для пакетной транскр
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from PySide6.QtCore import QThread, Signal
 
@@ -81,8 +81,8 @@ class STTWorker(QThread):
             # Повторный запуск STT на следующем чате не будет ждать загрузки.
             try:
                 WhisperManager.instance().unload(force=False)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.exception('Exception while unloading WhisperManager: %s', e)
             self.finished.emit()
 
     # ------------------------------------------------------------------

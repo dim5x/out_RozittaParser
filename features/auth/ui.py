@@ -808,8 +808,7 @@ class AuthScreen(QWidget):
             command: Команда pip install ... для копирования.
         """
 
-        from PySide6.QtWidgets import QDialog, QHBoxLayout
-        from PySide6.QtGui import QClipboard
+        from PySide6.QtWidgets import QDialog
 
         dlg = QDialog(self)
         dlg.setWindowTitle(title)

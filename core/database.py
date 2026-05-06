@@ -721,7 +721,6 @@ class DBManager:
                 return
             except sqlite3.OperationalError as exc:
                 if "locked" in str(exc).lower() and attempt < _MAX_RETRIES - 1:
-                    import time
                     time.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
                     continue
                 raise

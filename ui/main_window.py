@@ -34,16 +34,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Optional
 
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QUrl
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QUrl
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtMultimedia import QSoundEffect
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QSizePolicy, QProgressBar, QStackedWidget,
-    QFrame, QPushButton, QApplication, QSpinBox, QComboBox,
+    QFrame, QPushButton, QSpinBox, QComboBox,
     QScrollArea, QGridLayout,
 )
 
@@ -54,8 +55,7 @@ from core.ui_shared.styles import (
     ACCENT_SOFT_ORANGE,
     TEXT_PRIMARY, TEXT_SECONDARY,
     OVERLAY_HEX, OVERLAY2_HEX, BORDER_HEX,
-    RADIUS_LG, RADIUS_MD,
-    FONT_FAMILY, FONT_SIZE_BODY, FONT_SIZE_SMALL,
+    RADIUS_MD, FONT_FAMILY, FONT_SIZE_BODY, FONT_SIZE_SMALL,
     COLOR_SUCCESS, COLOR_ERROR, COLOR_WARNING,
     QSS_PROGRESS, QSS_INPUT, QSS_COMBOBOX,
 )
@@ -243,7 +243,7 @@ class StatusPill(QFrame):
         self._lbl.setText(text)
         if state == "online":
             color = COLOR_SUCCESS
-            shadow = f"0 0 6px {COLOR_SUCCESS}"
+            # shadow = f"0 0 6px {COLOR_SUCCESS}"
         elif state == "busy":
             color = COLOR_WARNING
         else:
@@ -920,7 +920,6 @@ class LogoutWorker(QThread):
             loop.close()
 
     async def _do_logout(self) -> None:
-        from telethon import TelegramClient
 
         import gc
         cfg = self._cfg
@@ -1084,7 +1083,7 @@ class MainWindow(QMainWindow):
     def _build_sidebar(self) -> QWidget:
         sidebar = QWidget()
         sidebar.setFixedWidth(196)
-        sidebar.setStyleSheet(f"background-color: rgba(18,18,18,0.6);")
+        sidebar.setStyleSheet("background-color: rgba(18,18,18,0.6);")
 
         layout = QVBoxLayout(sidebar)
         layout.setContentsMargins(10, 14, 10, 14)
@@ -1092,7 +1091,7 @@ class MainWindow(QMainWindow):
 
         # Метка секции
         section_lbl = QLabel("ШАГИ")
-        section_lbl.setStyleSheet(f"""
+        section_lbl.setStyleSheet("""
             QLabel {{
                 color: rgba(255,255,255,0.3);
                 font-size: 10px;
@@ -1547,7 +1546,6 @@ class MainWindow(QMainWindow):
         # Дополнительный disconnect не нужен и опасен (cross-loop).
         # Задержка 300 мс: даём AuthWorker.run() завершить finally:loop.close()
         # и полностью освободить SQLite-файл сессии до старта ChatsWorker.
-        from PySide6.QtCore import QTimer
         QTimer.singleShot(300, self._load_chats)
 
     # ──────────────────────────────────────────────────────────────────────
@@ -1680,7 +1678,6 @@ class MainWindow(QMainWindow):
         self._on_parse_requested(params)
 
     def _on_parse_requested(self, params: ParseParams) -> None:
-        import os
         session_file = self._cfg.session_path + ".session"
         if not os.path.exists(session_file):
             self._log.append_error("❌ Нет активной сессии Telegram")
@@ -1773,7 +1770,6 @@ class MainWindow(QMainWindow):
     # ──────────────────────────────────────────────────────────────────────
 
     def _run_stt(self, collect_result) -> None:
-        import os
         from core.stt.worker import STTWorker
         from core.utils import sanitize_filename
         from config import DB_FILENAME
@@ -1834,7 +1830,6 @@ class MainWindow(QMainWindow):
     # ──────────────────────────────────────────────────────────────────────
 
     def _run_export(self, collect_result) -> None:
-        import os
         from features.export.ui import ExportWorker, ExportParams
         from core.utils import sanitize_filename
         from config import DB_FILENAME

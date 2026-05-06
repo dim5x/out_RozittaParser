@@ -829,9 +829,13 @@ class socksocket(_BaseSocket):
 
     @set_self_blocking
     def connect_ex(self, dest_pair):
-        """ https://docs.python.org/3/library/socket.html#socket.socket.connect_ex
-        Like connect(address), but return an error indicator instead of raising an exception for errors returned by the C-level connect() call (other problems, such as "host not found" can still raise exceptions).
+        """https://docs.python.org/3/library/socket.html#socket.socket.connect_ex
+
+        Like connect(address), but return an error indicator instead of raising an exception for errors
+        returned by the C-level connect() call (other problems, such as "host not found"
+        can still raise exceptions).
         """
+
         try:
             self.connect(dest_pair, catch_errors=True)
             return 0

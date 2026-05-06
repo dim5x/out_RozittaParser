@@ -163,7 +163,7 @@ class TestSaveConfig:
         path = str(tmp_path / "rt.json")
         cfg = AppConfig(api_id="1", api_hash="x", output_dir="/secret", session_name="priv")
         save_config(cfg, path)
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         assert "output_dir" not in data
         assert "session_name" not in data

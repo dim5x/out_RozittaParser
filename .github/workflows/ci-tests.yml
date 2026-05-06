@@ -37,6 +37,12 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov pytest-timeout PySide6
 
+      - name: Install OpenGL libraries (Linux)
+        if: matrix.xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1-mesa-glx libgl1-mesa-dri
+
       - name: Run tests (Linux + Xvfb)
         if: matrix.xvfb
         uses: coactions/setup-xvfb@b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3 # v1

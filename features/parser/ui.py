@@ -38,14 +38,13 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QLineEdit, QDateEdit,
-    QScrollArea, QFrame, QSizePolicy, QButtonGroup,
-    QSpacerItem,
+    QScrollArea, QFrame, QButtonGroup,
 )
 
 from core.ui_shared.styles import (
     ACCENT_ORANGE, ACCENT_PINK, ACCENT_SOFT_PINK,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_DISABLED,
-    OVERLAY_HEX, OVERLAY2_HEX, BORDER_HEX, RADIUS_MD, RADIUS_XS,
+    OVERLAY_HEX, OVERLAY2_HEX, BORDER_HEX, RADIUS_MD,
     FONT_FAMILY, FONT_SIZE_BODY, FONT_SIZE_SMALL, FONT_SIZE_XS,
     QSS_INPUT, QSS_BUTTON_SECONDARY, QSS_DATE_EDIT, QSS_SCROLL_AREA,
 )
@@ -53,7 +52,6 @@ from core.ui_shared.widgets import (
     SectionTitle, MediaButton, ChipButton,
     SplitModeButton, ToggleSwitch, UserTag,
 )
-from core.utils import build_telegram_client
 
 logger = logging.getLogger(__name__)
 

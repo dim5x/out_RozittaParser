@@ -35,11 +35,11 @@ import asyncio
 import logging
 from typing import Optional
 
-from PySide6.QtCore import Qt, Signal, Slot, QThread, QUrl
-from PySide6.QtGui import QFont, QDesktopServices
+from PySide6.QtCore import Qt, Signal, Slot, QThread
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication, QFrame, QFileDialog, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget, QGridLayout
+    QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget
 )
 from config import AppConfig
 from core.ui_shared.styles import (
@@ -92,7 +92,7 @@ class SessionCheckWorker(QThread):
         except ConnectionError as exc:
             self.log_message.emit(f"❌ {exc}")
         except Exception:
-            pass  # нет сессии — молча ничего не делаем
+            logging.exception('Exception in SessionCheckWorker.run()')  # нет сессии — молча ничего не делаем
         finally:
             loop.close()
 
@@ -117,13 +117,13 @@ class SessionCheckWorker(QThread):
         except asyncio.TimeoutError:
             self.log_message.emit("⏱ Таймаут проверки сессии — прокси недоступен?")
         except Exception:
-            pass
+            logging.exception('Exception in SessionCheckWorker._check() ')
         finally:
             if client is not None:
                 try:
                     await asyncio.wait_for(client.disconnect(), timeout=5.0)
                 except Exception:
-                    pass
+                    logging.exception('Exception in SessionCheckWorker._check()')
         return None
 
 

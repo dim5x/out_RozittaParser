@@ -16,7 +16,6 @@ core/stt/worker.py — STTWorker: QThread для пакетной транскр
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from PySide6.QtCore import QThread, Signal
 

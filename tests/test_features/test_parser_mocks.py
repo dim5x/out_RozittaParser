@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from telethon.tl.types import (
     Channel, Chat, ChatPhotoEmpty, DocumentAttributeAudio,
-    DocumentAttributeFilename, DocumentAttributeVideo, Message,
+    DocumentAttributeVideo, Message,
     MessageMediaDocument, MessageMediaPhoto, User,
 )
 

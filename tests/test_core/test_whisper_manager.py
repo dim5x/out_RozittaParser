@@ -7,7 +7,7 @@ tests/test_core/test_whisper_manager.py
 import pytest
 from unittest.mock import patch, MagicMock
 
-from core.stt.whisper_manager import WhisperManager, _RE_WORD_REPEAT, _RE_PHRASE_REPEAT
+from core.stt.whisper_manager import WhisperManager, _RE_PHRASE_REPEAT
 from core.exceptions import STTError
 
 

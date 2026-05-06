@@ -6,7 +6,6 @@ tests/test_features/test_participants.py
 """
 import os
 
-import pytest
 from docx import Document
 
 from features.export.participants import export_participants_docx

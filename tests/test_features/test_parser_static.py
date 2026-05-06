@@ -5,7 +5,6 @@ tests/test_features/test_parser_static.py
 _extract_topic_id, _get_sender_name, _classify_chat_type, _resolve_cutoff,
 CollectParams, _extract_row_sync, _build_media_dir, _get_original_filename.
 """
-import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock
 

@@ -88,7 +88,7 @@ class TestConfigSecurity:
         )
         save_config(cfg, path)
 
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             data = json.load(f)
 
         assert "output_dir" not in data
@@ -101,7 +101,7 @@ class TestConfigSecurity:
         cfg = AppConfig(api_id="123", api_hash="abc", phone="+79990001111")
         save_config(cfg, path)
 
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             data = json.load(f)
 
         assert data["api_id"] == "123"
@@ -115,7 +115,7 @@ class TestConfigSecurity:
         cfg = AppConfig(api_id="999", api_hash="my_secret_hash_1234567890abcdef")
         save_config(cfg, path)
 
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             data = json.load(f)
 
         assert data["api_hash"] == "my_secret_hash_1234567890abcdef"

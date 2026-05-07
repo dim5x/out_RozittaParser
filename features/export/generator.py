@@ -179,6 +179,7 @@ class DocxGenerator:
         self._chat_title:   str           = "chat"
         self._period_label: str           = "fullchat"
         self._topic_id:     Optional[int] = None   # ← задача 1
+        self._topic_name:   Optional[str] = None
         # Транскрипции: {message_id: text} — загружаются в generate()
         self._transcriptions: Dict[int, str] = {}
 
@@ -192,6 +193,7 @@ class DocxGenerator:
         chat_title:       str           = "",
         split_mode:       str           = "none",
         topic_id:         Optional[int] = None,
+        topic_name:       Optional[str] = None, #<--
         user_id:          Optional[int] = None,
         include_comments: bool          = False,
         period_label:     str           = "fullchat",
@@ -221,6 +223,7 @@ class DocxGenerator:
         self._chat_title   = chat_title or f"chat_{chat_id}"
         self._period_label = period_label
         self._topic_id     = topic_id   # ← задача 1: сохраняем для _build_path
+        self._topic_name   = topic_name
         os.makedirs(self._output_dir, exist_ok=True)
 
         # Загружаем все транскрипции чата одним запросом
@@ -300,6 +303,7 @@ class DocxGenerator:
             self._add_group_to_doc(doc, group)
 
         file_path = self._build_path("archive")
+        print(f'{file_path=}')
         self._save_doc(doc, file_path)
         self._log(f"  ✅ {os.path.basename(file_path)} ({len(messages)} сообщений)")
         return [file_path]
@@ -729,7 +733,10 @@ class DocxGenerator:
 
         safe_title = sanitize_filename(self._chat_title)
         topic_sfx  = _topic_suffix(self._topic_id)
-        filename   = f"{safe_title}{topic_sfx}_{kind}_{self._period_label}.docx"
+        if self._topic_name:
+            filename = f"{safe_title}_{self._topic_name}_{kind}_{self._period_label}.docx"
+        else:
+            filename   = f"{safe_title}{topic_sfx}_{kind}_{self._period_label}.docx"
         return os.path.join(self._output_dir, filename)
 
     def _save_doc(self, doc: Document, file_path: str) -> None:
@@ -778,6 +785,9 @@ class JsonGenerator:
         chat_title:           str,
         *,
         topic_id:             Optional[int]  = None,      # ← задача 2
+
+        topic_name:           Optional[str] = None,
+
         user_id:              Optional[int]  = None,
         include_comments:     bool           = False,
         ai_split:             bool           = False,
@@ -823,7 +833,10 @@ class JsonGenerator:
         stt_map:   dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
         safe_title = sanitize_filename(chat_title)
         topic_sfx  = _topic_suffix(topic_id)           # ← задача 2
-        base_name  = f"{safe_title}{topic_sfx}_{period_label}_history"  # ← задача 3
+        if topic_name:
+            base_name  = f"{safe_title}_{topic_name}_{period_label}_history"  # ← задача 3
+        else:
+            base_name = f"{safe_title}{topic_sfx}_{period_label}_history"  # ← задача 3
 
         # ── Без разбивки: один файл ────────────────────────────────────
         if not ai_split:
@@ -922,6 +935,7 @@ class MarkdownGenerator:
         chat_title:           str,
         *,
         topic_id:             Optional[int]  = None,      # ← задача 2
+        topic_name:           Optional[str]  = None,
         user_id:              Optional[int]  = None,
         include_comments:     bool           = False,
         ai_split:             bool           = False,
@@ -966,7 +980,10 @@ class MarkdownGenerator:
         stt_map:    dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
         safe_title  = sanitize_filename(chat_title)
         topic_sfx   = _topic_suffix(topic_id)           # ← задача 2
-        base_name   = f"{safe_title}{topic_sfx}_{period_label}_history"
+        if topic_name:
+            base_name = f"{safe_title}_{topic_name}_{period_label}_history"
+        else:
+            base_name   = f"{safe_title}{topic_sfx}_{period_label}_history"
 
         header = f"# {chat_title}\n\n"
 
@@ -1203,6 +1220,7 @@ class HtmlGenerator:
         chat_title:           str,
         *,
         topic_id:             Optional[int]  = None,
+        topic_name:           Optional[str]  = None,
         user_id:              Optional[int]  = None,
         include_comments:     bool           = False,
         ai_split:             bool           = False,
@@ -1248,7 +1266,10 @@ class HtmlGenerator:
         stt_map:    dict[int, str] = self._db.get_transcriptions_for_chat(chat_id)
         safe_title  = sanitize_filename(chat_title)
         topic_sfx   = _topic_suffix(topic_id)
-        base_name   = f"{safe_title}{topic_sfx}_{period_label}_history"
+        if topic_name:
+            base_name   = f"{safe_title}_{topic_name}_{period_label}_history"
+        else:
+            base_name = f"{safe_title}{topic_sfx}_{period_label}_history"
         h_title     = html_lib.escape(chat_title)
 
         total    = len(rows)

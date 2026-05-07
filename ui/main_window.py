@@ -1862,6 +1862,7 @@ class MainWindow(QMainWindow):
             chat_title=chat_title,
             split_mode=split_mode,
             topic_id=chat.get("selected_topic_id"),
+            topic_name=chat.get("selected_topic_name"),
             user_id=params.user_id,
             include_comments=params.include_comments if params else False,
             output_dir=chat_dir,
